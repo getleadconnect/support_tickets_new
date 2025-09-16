@@ -940,8 +940,8 @@ export default function Tickets() {
                     )}
                   </div>
 
-                  {/* Row 3: Assigned users and timestamps - Mobile Responsive */}
-                  <div className="flex flex-col gap-3">
+                  {/* Row 3: Assigned users and timestamps - Mobile/Desktop Responsive */}
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3">
                     {/* Assigned Users Section */}
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex items-center gap-1">
@@ -989,7 +989,7 @@ export default function Tickets() {
                       </button>
                     </div>
 
-                    {/* Timestamps Section */}
+                    {/* Timestamps Section - Right side on desktop */}
                     <div className="flex flex-col sm:flex-row gap-1 sm:gap-4 text-xs text-gray-500">
                       <span className="truncate">Created: {new Date(ticket.created_at).toLocaleString('en-US', {
                         month: 'short',
