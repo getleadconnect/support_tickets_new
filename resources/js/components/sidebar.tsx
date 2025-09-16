@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { 
-  LayoutDashboard, 
-  Ticket, 
-  Users, 
-  Package, 
-  FileText, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Ticket,
+  Users,
+  Package,
+  FileText,
+  Settings,
   BarChart3,
   ShoppingCart,
   Building2,
@@ -19,7 +19,8 @@ import {
   Trash2,
   CreditCard,
   Sparkles,
-  MessageCircle
+  MessageCircle,
+  HelpCircle
 } from 'lucide-react';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -97,6 +98,11 @@ const navigationItems: NavItem[] = [
     title: 'Settings',
     href: '/settings',
     icon: Settings,
+  },
+  {
+    title: 'Help & Support',
+    href: '/help-support',
+    icon: HelpCircle,
   },
 ];
 
@@ -185,15 +191,19 @@ export function Sidebar({ className, ...props }: SidebarProps) {
               const Icon = item.icon;
               const hasChildren = item.children && item.children.length > 0;
               const isExpanded = expandedItems.includes(item.title);
-              const isActive = item.href ? (location.pathname === item.href || 
+              const isActive = item.href ? (location.pathname === item.href ||
                 (item.href === '/product-list' && location.pathname === '/products')) : false;
-              const isChildActive = hasChildren && item.children.some(child => 
+              const isChildActive = hasChildren && item.children.some(child =>
                 location.pathname === child.href
               );
+
+              // Add separator line above Help & Support
+              const showSeparator = item.title === 'Help & Support';
               
               if (hasChildren) {
                 return (
                   <div key={item.title} className="space-y-1">
+                    {showSeparator && <div className="border-t border-gray-200 my-2"></div>}
                     <button
                       onClick={() => toggleExpanded(item.title)}
                       className={cn(
@@ -267,10 +277,11 @@ export function Sidebar({ className, ...props }: SidebarProps) {
               }
               
               return (
-                <Link
-                  key={item.href}
-                  to={item.href || '/'}
-                  className={cn(
+                <div key={item.href}>
+                  {showSeparator && <div className="border-t border-gray-200 my-2"></div>}
+                  <Link
+                    to={item.href || '/'}
+                    className={cn(
                     "group flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
                     isActive 
                       ? "bg-purple-100 text-purple-900 shadow-sm" 
@@ -291,7 +302,8 @@ export function Sidebar({ className, ...props }: SidebarProps) {
                       {item.badge}
                     </span>
                   )}
-                </Link>
+                  </Link>
+                </div>
               );
             })}
           </nav>

@@ -18,6 +18,7 @@ const DeletedTickets = lazy(() => import('./pages/deleted-tickets'));
 const Customers = lazy(() => import('./pages/customers'));
 const CustomerDetails = lazy(() => import('./pages/customer-details'));
 const Settings = lazy(() => import('./pages/settings'));
+const HelpSupport = lazy(() => import('./pages/help-support'));
 const Products = lazy(() => import('./pages/products'));
 const Invoices = lazy(() => import('./pages/invoices'));
 const Payments = lazy(() => import('./pages/payments'));
@@ -188,6 +189,11 @@ function App() {
                     <Route path="/settings" element={
                         <ProtectedRoute>
                             <Settings />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/help-support" element={
+                        <ProtectedRoute>
+                            <HelpSupport />
                         </ProtectedRoute>
                     } />
                     <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,10 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, UserPlus, Edit } from 'lucide-react';
+import { Plus, Search, UserPlus, Edit, Upload, Download, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AddTicketModal } from '@/components/AddTicketModal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
 
@@ -71,6 +81,13 @@ export default function Customers() {
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [hoveredCustomerId, setHoveredCustomerId] = useState<number | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -318,6 +335,123 @@ export default function Customers() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain'];
+      const validExtensions = ['.csv', '.xls', '.xlsx'];
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+      if (!validTypes.includes(file.type) && !validExtensions.includes(fileExtension)) {
+        toast.error('Please select a valid CSV or Excel file');
+        return;
+      }
+      setImportFile(file);
+    }
+  };
+
+  const handleDeleteClick = (customer: Customer) => {
+    setCustomerToDelete(customer);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+
+    setDeleting(true);
+    try {
+      const response = await axios.delete(`/customers/${customerToDelete.id}`);
+
+      if (response.data.success) {
+        toast.success('Customer deleted successfully');
+        fetchCustomers(); // Refresh the list
+        setDeleteConfirmOpen(false);
+        setCustomerToDelete(null);
+      }
+    } catch (error: any) {
+      console.error('Error deleting customer:', error);
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to delete customer');
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await axios.get('/customers/download-template', {
+        responseType: 'blob'
+      });
+
+      // Create a download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'customer_sample.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Template downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      toast.error('Failed to download template');
+    }
+  };
+
+  const handleImportCustomers = async () => {
+    if (!importFile) {
+      toast.error('Please select a file to import');
+      return;
+    }
+
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', importFile);
+
+    // Add branch_id for non-admin users
+    if (currentUser?.role_id !== 1 && currentUser?.branch_id) {
+      formData.append('branch_id', currentUser.branch_id.toString());
+    }
+
+    try {
+      const response = await axios.post('/customers/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (response.data.success) {
+        toast.success(`Successfully imported ${response.data.imported_count} customers`);
+        setImportModalOpen(false);
+        setImportFile(null);
+        fetchCustomers(); // Refresh the customer list
+
+        // Reset file input
+        const fileInput = document.getElementById('import-file') as HTMLInputElement;
+        if (fileInput) {
+          fileInput.value = '';
+        }
+      }
+    } catch (error: any) {
+      console.error('Import error:', error);
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        Object.keys(errors).forEach(key => {
+          toast.error(`Row ${key}: ${errors[key].join(', ')}`);
+        });
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to import customers');
+      }
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleUpdateCustomer = async () => {
     // Validate required fields
     if (!customerFormData.name.trim()) {
@@ -380,14 +514,25 @@ export default function Customers() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center justify-between w-full">
                 <h1 className="text-xl sm:text-2xl font-semibold text-black">Customers</h1>
-                <Button
-                  onClick={handleAddCustomer}
-                  className="flex items-center gap-1"
-                  size="sm"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Add Customer
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setImportModalOpen(true)}
+                    className="flex items-center gap-1"
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Import
+                  </Button>
+                  <Button
+                    onClick={handleAddCustomer}
+                    className="flex items-center gap-1"
+                    size="sm"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Add Customer
+                  </Button>
+                </div>
               </div>
             </div>
             <span className="text-xs sm:text-sm text-blue-600 mt-2 block">* Click on customer name to display details</span>
@@ -443,6 +588,8 @@ export default function Customers() {
                   <div
                     key={customer.id}
                     className="group flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-gray-200 rounded-lg hover:shadow-md transition-all gap-4"
+                    onMouseEnter={() => setHoveredCustomerId(customer.id)}
+                    onMouseLeave={() => setHoveredCustomerId(null)}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                       {/* Mobile: Row layout, Desktop: Original layout */}
@@ -543,6 +690,15 @@ export default function Customers() {
                       >
                         Edit
                         <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                      <Button
+                        onClick={() => handleDeleteClick(customer)}
+                        variant="outline"
+                        size="sm"
+                        className="opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
+                        title="Delete Customer"
+                      >
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     </div>
                   </div>
@@ -879,6 +1035,130 @@ export default function Customers() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Customers Modal */}
+      <Dialog open={importModalOpen} onOpenChange={setImportModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Customers</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="import-file">Select File</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadTemplate}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Template
+                </Button>
+              </div>
+              <Input
+                id="import-file"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileChange}
+                className="cursor-pointer"
+              />
+              <p className="text-sm text-gray-500">
+                Upload a CSV or Excel file with the following columns:
+              </p>
+              <div className="bg-gray-50 p-3 rounded-md">
+                <p className="text-xs font-mono">
+                  name, email, country_code, mobile, company_name
+                </p>
+              </div>
+              <div className="mt-2 space-y-1">
+                <p className="text-xs text-gray-600">• Column headers must match exactly (case-insensitive)</p>
+                <p className="text-xs text-gray-600">• Name field is required</p>
+                <p className="text-xs text-gray-600">• Country code should include + (e.g., +91)</p>
+                <p className="text-xs text-gray-600">• Email should be valid format</p>
+              </div>
+            </div>
+            {importFile && (
+              <div className="bg-blue-50 p-3 rounded-md">
+                <p className="text-sm text-blue-700">
+                  Selected file: <span className="font-medium">{importFile.name}</span>
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setImportModalOpen(false);
+                setImportFile(null);
+              }}
+              disabled={importing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImportCustomers}
+              disabled={!importFile || importing}
+            >
+              {importing ? 'Importing...' : 'Import Customers'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this customer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {customerToDelete && (
+                <div className="space-y-2">
+                  <p>
+                    You are about to delete customer: <strong>{customerToDelete.name}</strong>
+                  </p>
+                  {customerToDelete.tickets_count && customerToDelete.tickets_count > 0 ? (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-red-700 font-semibold">
+                        Cannot delete this customer!
+                      </p>
+                      <p className="text-red-600 text-sm mt-1">
+                        This customer has {customerToDelete.tickets_count} ticket{customerToDelete.tickets_count > 1 ? 's' : ''} associated with them.
+                        Please resolve or reassign all tickets before deleting the customer.
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">
+                      This action cannot be undone. This will permanently delete the customer and all their information.
+                    </p>
+                  )}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeleteConfirmOpen(false);
+                setCustomerToDelete(null);
+              }}
+              disabled={deleting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            {(!customerToDelete?.tickets_count || customerToDelete.tickets_count === 0) && (
+              <AlertDialogAction
+                onClick={handleDeleteCustomer}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? 'Deleting...' : 'Delete Customer'}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

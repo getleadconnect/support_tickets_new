@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
+use App\Services\SimpleXLSXParser;
 
 class CustomerController extends Controller
 {
@@ -334,6 +336,262 @@ public function getTicketLabels()
                 'success' => false,
                 'message' => 'Registration failed. Please try again.',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Import customers from CSV or XLSX file
+     */
+    public function importCustomers(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt,xlsx,xls|max:10240', // Max 10MB
+        ]);
+
+        try {
+            $user = auth()->user();
+            $file = $request->file('file');
+            $extension = strtolower($file->getClientOriginalExtension());
+
+            $rows = [];
+
+            if ($extension === 'xlsx' || $extension === 'xls') {
+                // Parse Excel file
+                try {
+                    $rows = SimpleXLSXParser::parse($file->getPathname());
+                } catch (\Exception $e) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to parse Excel file: ' . $e->getMessage()
+                    ], 400);
+                }
+            } else {
+                // Read CSV file
+                if (($handle = fopen($file->getPathname(), 'r')) !== FALSE) {
+                    // Read all rows
+                    while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
+                        $rows[] = $data;
+                    }
+                    fclose($handle);
+                }
+            }
+
+            if (empty($rows)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The file is empty'
+                ], 400);
+            }
+
+            // Debug: Log row count
+            $totalRows = count($rows);
+
+            // Get headers from first row and normalize them
+            $headers = array_map(function($header) {
+                return strtolower(trim(str_replace(' ', '_', $header)));
+            }, $rows[0]);
+
+            // Find column indexes
+            $nameIndex = array_search('name', $headers);
+            $emailIndex = array_search('email', $headers);
+            $countryCodeIndex = array_search('country_code', $headers);
+            $mobileIndex = array_search('mobile', $headers);
+            $companyNameIndex = array_search('company_name', $headers);
+
+            // Check if name column exists (required)
+            if ($nameIndex === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Name column is required in the CSV file'
+                ], 400);
+            }
+
+            $imported = 0;
+            $skipped = 0;
+            $errors = [];
+
+            // Process each row (skip header row)
+            for ($i = 1; $i < count($rows); $i++) {
+                $row = $rows[$i];
+
+                // Skip empty rows
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                try {
+                    // Extract data from row
+                    $name = isset($row[$nameIndex]) ? trim($row[$nameIndex]) : '';
+
+                    // Skip if name is empty
+                    if (empty($name)) {
+                        continue;
+                    }
+
+                    $email = $emailIndex !== false && isset($row[$emailIndex]) ? trim($row[$emailIndex]) : null;
+                    $countryCode = $countryCodeIndex !== false && isset($row[$countryCodeIndex]) ? trim($row[$countryCodeIndex]) : null;
+                    $mobile = $mobileIndex !== false && isset($row[$mobileIndex]) ? trim($row[$mobileIndex]) : null;
+                    $companyName = $companyNameIndex !== false && isset($row[$companyNameIndex]) ? trim($row[$companyNameIndex]) : null;
+
+                    // Validate email if provided
+                    if ($email && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        $errors[$i + 1] = ['Invalid email format: ' . $email];
+                        continue;
+                    }
+
+                    // Format country code
+                    if ($countryCode && !str_starts_with($countryCode, '+')) {
+                        $countryCode = '+' . $countryCode;
+                    }
+
+                    // Prepare customer data
+                    $customerData = [
+                        'name' => $name,
+                        'email' => $email,
+                        'country_code' => $countryCode,
+                        'mobile' => $mobile,
+                        'company_name' => $companyName,
+                        'created_by' => $user->id ?? 1,  // Add created_by field
+                    ];
+
+                    // Add branch_id based on user role
+                    if ($request->has('branch_id')) {
+                        $customerData['branch_id'] = $request->branch_id;
+                    } elseif ($user->role_id != 1 && $user->branch_id) {
+                        $customerData['branch_id'] = $user->branch_id;
+                    }
+
+                    // Check if customer already exists
+                    $existingCustomer = Customer::query();
+
+                    $checkDuplicate = false;
+
+                    if ($email) {
+                        $existingCustomer->where('email', $email);
+                        $checkDuplicate = true;
+                    } elseif ($mobile) {
+                        // If no email, check by mobile only
+                        $existingCustomer->where('mobile', $mobile);
+                        $checkDuplicate = true;
+                    } else {
+                        // If neither email nor mobile, check by name only
+                        $existingCustomer->where('name', $name);
+                        $checkDuplicate = true;
+                    }
+
+                    // Apply branch filter for non-admin users when checking duplicates
+                    if ($checkDuplicate && $user->role_id != 1 && $user->branch_id) {
+                        $existingCustomer->where('branch_id', $user->branch_id);
+                    }
+
+                    // Create customer if doesn't exist
+                    if (!$checkDuplicate || !$existingCustomer->exists()) {
+                        Customer::create($customerData);
+                        $imported++;
+                    } else {
+                        $skipped++;
+                    }
+
+                } catch (\Exception $e) {
+                    $errors[$i + 1] = ['Error: ' . $e->getMessage()];
+                }
+            }
+
+            $response = [
+                'success' => true,
+                'imported_count' => $imported,
+                'skipped_count' => $skipped,
+                'total_rows' => $totalRows - 1, // Excluding header
+                'message' => "$imported customers imported successfully"
+            ];
+
+            if ($skipped > 0) {
+                $response['message'] .= ", $skipped customers skipped (duplicates)";
+            }
+
+            if (!empty($errors)) {
+                $response['errors'] = $errors;
+                $response['message'] .= '. Some rows had errors.';
+            }
+
+            return response()->json($response);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process the file: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a customer
+     */
+    public function destroy($id)
+    {
+        try {
+            $customer = Customer::findOrFail($id);
+
+            // Check if customer has any tickets
+            $ticketCount = Ticket::where('customer_id', $customer->id)->count();
+
+            if ($ticketCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot delete customer. This customer has {$ticketCount} ticket(s) associated with them.",
+                    'ticket_count' => $ticketCount
+                ], 400);
+            }
+
+            // Delete the customer
+            $customer->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete customer: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Download customer import template
+     */
+    public function downloadTemplate()
+    {
+        try {
+            // Create a simple Excel-compatible CSV template
+            $headers = ['name', 'email', 'country_code', 'mobile', 'company_name'];
+            $sampleData = [
+                ['John Doe', 'john.doe@example.com', '+91', '9876543210', 'ABC Corporation'],
+                ['Jane Smith', 'jane.smith@example.com', '+1', '5551234567', 'XYZ Industries'],
+                ['Robert Johnson', 'robert.j@example.com', '+44', '7700900123', 'Tech Solutions Ltd']
+            ];
+
+            // Create CSV content
+            $csvContent = implode(',', $headers) . "\n";
+            foreach ($sampleData as $row) {
+                $csvContent .= implode(',', $row) . "\n";
+            }
+
+            // Return as downloadable file
+            return response($csvContent, 200)
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="customer_sample.csv"')
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate template: ' . $e->getMessage()
             ], 500);
         }
     }

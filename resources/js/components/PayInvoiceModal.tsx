@@ -78,12 +78,13 @@ export function PayInvoiceModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-white bg-[#5a4b81] -m-6 mb-4 p-4 rounded-t-lg">
+      <DialogContent className="max-w-md p-0">
+        <DialogHeader className="bg-[#5a4b81] text-white p-4 rounded-t-lg">
+          <DialogTitle className="text-white">
             Add Invoice
           </DialogTitle>
         </DialogHeader>
+        <div className="p-6">
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -173,6 +174,7 @@ export function PayInvoiceModal({
             </Button>
           </div>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

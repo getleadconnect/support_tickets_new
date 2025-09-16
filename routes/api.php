@@ -76,8 +76,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::post('/customers', [CustomerController::class, 'store']);
     Route::put('/customers/{id}', [CustomerController::class, 'update']);
+    Route::delete('/customers/{id}', [CustomerController::class, 'destroy']);
     Route::get('/customer-details/{customer}', [CustomerController::class, 'customerDetails']);
     Route::get('/customers-with-tickets', [CustomerController::class, 'customersWithTickets']);
+    Route::post('/customers/import', [CustomerController::class, 'importCustomers']);
+    Route::get('/customers/download-template', [CustomerController::class, 'downloadTemplate']);
         // Ticket Status routes
     Route::get('/ticket-statuses', [TicketController::class, 'getTicketStatus']);
        // Priorities routes
