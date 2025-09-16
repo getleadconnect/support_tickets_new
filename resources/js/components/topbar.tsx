@@ -109,38 +109,40 @@ export function Topbar({ title, onMenuClick }: TopbarProps) {
         </div>
 
         <div className="ml-auto flex items-center space-x-4">
-          {/* Add Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1">
-                <Plus className="h-4 w-4" />
-                <span>Add</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48" align="end">
-              <DropdownMenuItem 
-                onClick={() => setAddTicketModalOpen(true)}
-                className="cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition-colors"
-              >
-                <Ticket className="mr-2 h-4 w-4" />
-                Ticket
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setAddCustomerModalOpen(true)}
-                className="cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition-colors"
-              >
-                <Users className="mr-2 h-4 w-4" />
-                Customer
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => navigate('/products')}
-                className="cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition-colors"
-              >
-                <Package className="mr-2 h-4 w-4" />
-                Product
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Add Dropdown - Hide for agent users (role_id==2) */}
+          {user?.role_id !== 2 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center gap-1">
+                  <Plus className="h-4 w-4" />
+                  <span>Add</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48" align="end">
+                <DropdownMenuItem
+                  onClick={() => navigate('/tickets')}
+                  className="cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                >
+                  <Ticket className="mr-2 h-4 w-4" />
+                  Tickets
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/customers')}
+                  className="cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Customers
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/products')}
+                  className="cursor-pointer hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Products
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* Notifications */}
           <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>

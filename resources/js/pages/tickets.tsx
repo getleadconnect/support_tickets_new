@@ -714,32 +714,34 @@ export default function Tickets() {
                   </Button>
                 </div>
 
-                {/* Tickets Created By Me Link - Same line on desktop */}
-                <div className="lg:ml-auto mt-2 lg:mt-0">
-                  <button
-                    onClick={() => {
-                      // Toggle the created by me filter
-                      setShowCreatedByMe(!showCreatedByMe);
-                      // Clear other filters when toggling this filter
-                      if (!showCreatedByMe) {
-                        setFilterStatus('all');
-                        setFilterCustomer('all');
-                        setFilterAgent('all');
-                        setFilterTicketType('all');
-                        setFilterStartDate('');
-                        setFilterEndDate('');
-                      }
-                    }}
-                    className={`text-sm font-medium px-3 py-2 rounded transition-colors whitespace-nowrap ${
-                      showCreatedByMe
-                        ? 'text-blue-700 bg-blue-50 hover:bg-blue-100'
-                        : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                    }`}
-                    title={user?.role_id === 2 ? "Show tickets you created (not just assigned to you)" : "Show tickets you created"}
-                  >
-                    {showCreatedByMe ? '✓ ' : ''}Tickets Created By Me
-                  </button>
-                </div>
+                {/* Tickets Created By Me Link - Only show for agent users (role_id=2) */}
+                {user?.role_id === 2 && (
+                  <div className="lg:ml-auto mt-2 lg:mt-0">
+                    <button
+                      onClick={() => {
+                        // Toggle the created by me filter
+                        setShowCreatedByMe(!showCreatedByMe);
+                        // Clear other filters when toggling this filter
+                        if (!showCreatedByMe) {
+                          setFilterStatus('all');
+                          setFilterCustomer('all');
+                          setFilterAgent('all');
+                          setFilterTicketType('all');
+                          setFilterStartDate('');
+                          setFilterEndDate('');
+                        }
+                      }}
+                      className={`text-sm font-medium px-3 py-2 rounded transition-colors whitespace-nowrap ${
+                        showCreatedByMe
+                          ? 'text-blue-700 bg-blue-50 hover:bg-blue-100'
+                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
+                      title="Show tickets you created (not just assigned to you)"
+                    >
+                      {showCreatedByMe ? '✓ ' : ''}Tickets Created By Me
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
