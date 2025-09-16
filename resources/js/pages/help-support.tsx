@@ -92,13 +92,6 @@ export default function HelpSupport() {
                 <HelpCircle className="h-4 w-4" />
                 FAQs
               </TabsTrigger>
-              <TabsTrigger
-                value="contact-support"
-                className="w-full justify-start text-sm px-3 py-2 mt-[5px] data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:shadow-sm flex items-center gap-2"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Contact Support
-              </TabsTrigger>
             </TabsList>
 
             {/* Mobile horizontal tabs */}
@@ -114,10 +107,6 @@ export default function HelpSupport() {
               <TabsTrigger value="invoicing" className="text-xs">
                 <CreditCard className="h-3 w-3 mr-1" />
                 Invoicing
-              </TabsTrigger>
-              <TabsTrigger value="contact-support" className="text-xs">
-                <MessageCircle className="h-3 w-3 mr-1" />
-                Support
               </TabsTrigger>
             </TabsList>
 
@@ -899,111 +888,6 @@ export default function HelpSupport() {
             </Card>
           </TabsContent>
 
-          {/* Contact Support Tab */}
-          <TabsContent value="contact-support" className="space-y-4">
-            <Card className="border" style={{ borderColor: '#e4e4e4' }}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
-                  Contact Support
-                </CardTitle>
-                <CardDescription>
-                  Need additional help? Get in touch with our support team.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card className="border" style={{ borderColor: '#e4e4e4' }}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Email Support
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Send us an email for non-urgent inquiries.
-                      </p>
-                      <Button variant="outline" className="w-full">
-                        support@example.com
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border" style={{ borderColor: '#e4e4e4' }}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Phone Support
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Call us for immediate assistance.
-                      </p>
-                      <Button variant="outline" className="w-full">
-                        +1 (555) 123-4567
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border" style={{ borderColor: '#e4e4e4' }}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        Knowledge Base
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Browse our comprehensive documentation.
-                      </p>
-                      <Button variant="outline" className="w-full">
-                        Visit Help Center
-                      </Button>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border" style={{ borderColor: '#e4e4e4' }}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <MessageCircle className="h-4 w-4" />
-                        Live Chat
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Chat with our support team in real-time.
-                      </p>
-                      <Button variant="outline" className="w-full">
-                        Start Chat
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <Separator className="my-6" />
-
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Support Hours</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Monday - Friday:</span>
-                      <span className="font-medium">9:00 AM - 6:00 PM EST</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Saturday:</span>
-                      <span className="font-medium">10:00 AM - 4:00 PM EST</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sunday:</span>
-                      <span className="font-medium">Closed</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Reports & Analytics Tab */}
           <TabsContent value="reports" className="space-y-4">
