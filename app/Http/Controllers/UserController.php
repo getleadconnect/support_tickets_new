@@ -180,14 +180,14 @@ class UserController extends Controller
     }
 
     /**
-     * Get all agent users (role_id = 2).
+     * Get all users for assignment and notification.
      */
     public function getAgentUsers()
     {
-        $agents = User::where('role_id', 2)
-            ->select('id', 'name', 'email')
+        // Fetch all users (not just agents) for assignment
+        $users = User::select('id', 'name', 'email', 'branch_id', 'role_id')
             ->get();
-            
-        return response()->json($agents);
+
+        return response()->json($users);
     }
 }

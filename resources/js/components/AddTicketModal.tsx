@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ interface User {
   id: number;
   name: string;
   email?: string;
+  branch_id?: number;
 }
 
 interface AddTicketModalProps {
@@ -67,13 +69,14 @@ interface AddTicketModalProps {
   onTicketCreated?: () => void;
 }
 
-export function AddTicketModal({ 
-  open, 
-  onOpenChange, 
-  customerId, 
+export function AddTicketModal({
+  open,
+  onOpenChange,
+  customerId,
   customerName,
-  onTicketCreated 
+  onTicketCreated
 }: AddTicketModalProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -89,6 +92,7 @@ export function AddTicketModal({
   const [showLabelsDropdown, setShowLabelsDropdown] = useState(false);
   const labelsDropdownRef = useRef<HTMLDivElement>(null);
   const [agentUsers, setAgentUsers] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<number[]>([]);
   const [selectedNotifyUsers, setSelectedNotifyUsers] = useState<number[]>([]);
   const [showAgentsDropdown, setShowAgentsDropdown] = useState(false);
@@ -230,7 +234,9 @@ export function AddTicketModal({
   const fetchAgentUsers = async () => {
     try {
       const response = await axios.get('/agent-users');
-      setAgentUsers(response.data || []);
+      const users = response.data || [];
+      setAllUsers(users);
+      setAgentUsers(users);
     } catch (error) {
       console.error('Error fetching agent users:', error);
     }
@@ -238,6 +244,27 @@ export function AddTicketModal({
 
   const handleFormChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+
+    // When branch is changed, filter users by selected branch for all users
+    if (field === 'branch_id') {
+      if (value && value !== '') {
+        // Filter users by selected branch
+        const branchId = parseInt(value);
+        const filteredUsers = allUsers.filter((u: User) => u.branch_id === branchId);
+
+        // Show filtered users if any exist, otherwise keep showing all users
+        setAgentUsers(filteredUsers.length > 0 ? filteredUsers : allUsers);
+
+        // Clear selected agents/notify users if they're not in the new branch
+        if (filteredUsers.length > 0) {
+          setSelectedAgents(prev => prev.filter(id => filteredUsers.some(u => u.id === id)));
+          setSelectedNotifyUsers(prev => prev.filter(id => filteredUsers.some(u => u.id === id)));
+        }
+      } else {
+        // If no branch selected, show all users
+        setAgentUsers(allUsers);
+      }
+    }
   };
 
   const handleAdditionalFieldChange = (fieldId: number, value: string) => {
@@ -284,12 +311,41 @@ export function AddTicketModal({
   };
 
   const handleSubmit = async () => {
+    // Validate required fields
     if (!formData.customer_id) {
       toast.error('Please select a customer');
       return;
     }
     if (!formData.issue) {
       toast.error('Please enter an issue title');
+      return;
+    }
+    if (!formData.status) {
+      toast.error('Please select a status');
+      return;
+    }
+    if (!formData.priority) {
+      toast.error('Please select a priority');
+      return;
+    }
+    if (!formData.due_date) {
+      toast.error('Please select a due date');
+      return;
+    }
+    if (!formData.closed_time) {
+      toast.error('Please select a time');
+      return;
+    }
+    if (selectedAgents.length === 0) {
+      toast.error('Please assign at least one agent');
+      return;
+    }
+    if (selectedNotifyUsers.length === 0) {
+      toast.error('Please select at least one user to notify');
+      return;
+    }
+    if (!formData.branch_id) {
+      toast.error('Please select a branch');
       return;
     }
 
@@ -381,6 +437,8 @@ export function AddTicketModal({
     setSelectedLabels([]);
     setSelectedAgents([]);
     setSelectedNotifyUsers([]);
+    // Reset users to show all when modal reopens
+    setAgentUsers(allUsers);
   };
 
   return (
@@ -406,7 +464,7 @@ export function AddTicketModal({
           <div className="grid gap-4">
           {/* Customer Selection */}
           <div className="grid gap-2">
-            <Label htmlFor="customer">Customer</Label>
+            <Label htmlFor="customer">Customer <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
               {customerId ? (
                 <Input
@@ -459,12 +517,13 @@ export function AddTicketModal({
 
           {/* Issue Title */}
           <div className="grid gap-2">
-            <Label htmlFor="issue">Issue</Label>
+            <Label htmlFor="issue">Issue <span className="text-red-500">*</span></Label>
             <Input
               id="issue"
               value={formData.issue}
               onChange={(e) => handleFormChange('issue', e.target.value)}
               placeholder="Enter issue title"
+              required
             />
           </div>
 
@@ -483,7 +542,7 @@ export function AddTicketModal({
           {/* Status and Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
               <Select
                 value={formData.status?.toString() || ''}
                 onValueChange={(value) => handleFormChange('status', parseInt(value))}
@@ -521,7 +580,7 @@ export function AddTicketModal({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
+              <Label htmlFor="priority">Priority <span className="text-red-500">*</span></Label>
               <Select
                 value={formData.priority?.toString() || ''}
                 onValueChange={(value) => handleFormChange('priority', parseInt(value))}
@@ -562,32 +621,63 @@ export function AddTicketModal({
           {/* Due Date and Closed Time */}
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="due_date">Due Date</Label>
+              <Label htmlFor="due_date">Due Date <span className="text-red-500">*</span></Label>
               <Input
                 id="due_date"
                 type="date"
                 value={formData.due_date}
                 onChange={(e) => handleFormChange('due_date', e.target.value)}
                 placeholder="dd/mm/yyyy"
+                required
               />
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="closed_time">Time</Label>
+              <Label htmlFor="closed_time">Time <span className="text-red-500">*</span></Label>
               <Input
                 id="closed_time"
                 type="time"
                 value={formData.closed_time}
                 onChange={(e) => handleFormChange('closed_time', e.target.value)}
+                required
               />
             </div>
+          </div>
+
+          {/* Branch Dropdown - For Admin users, this filters Assigned To and Notify To */}
+          <div className="grid gap-2">
+            <Label htmlFor="branch">Branch <span className="text-red-500">*</span></Label>
+            <Select
+              value={formData.branch_id?.toString() || ''}
+              onValueChange={(value) => handleFormChange('branch_id', value)}
+            >
+              <SelectTrigger id="branch">
+                <SelectValue placeholder="Select a branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.length === 0 ? (
+                  <SelectItem value="no-branches" disabled>
+                    No branches available
+                  </SelectItem>
+                ) : (
+                  branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                      {branch.branch_name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            {formData.branch_id && (
+              <p className="text-xs text-gray-500">Users below will be filtered by selected branch</p>
+            )}
           </div>
 
           {/* Assigned To and Notify To Dropdowns */}
           <div className="grid grid-cols-2 gap-4">
             {/* Assigned To Multi-select Dropdown */}
             <div className="grid gap-2">
-              <Label htmlFor="assigned-to">Assigned To</Label>
+              <Label htmlFor="assigned-to">Assigned To <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <button
                   type="button"
@@ -647,7 +737,7 @@ export function AddTicketModal({
 
             {/* Notify To Multi-select Dropdown */}
             <div className="grid gap-2">
-              <Label htmlFor="notify-to">Notify To</Label>
+              <Label htmlFor="notify-to">Notify To <span className="text-red-500">*</span></Label>
               <div className="relative">
                 <button
                   type="button"
@@ -704,32 +794,6 @@ export function AddTicketModal({
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Branch Dropdown */}
-          <div className="grid gap-2">
-            <Label htmlFor="branch">Branch</Label>
-            <Select
-              value={formData.branch_id?.toString() || ''}
-              onValueChange={(value) => handleFormChange('branch_id', value)}
-            >
-              <SelectTrigger id="branch">
-                <SelectValue placeholder="Select a branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.length === 0 ? (
-                  <SelectItem value="no-branches" disabled>
-                    No branches available
-                  </SelectItem>
-                ) : (
-                  branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                      {branch.branch_name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Ticket Labels Multi-select Dropdown */}

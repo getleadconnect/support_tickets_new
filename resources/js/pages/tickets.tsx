@@ -153,8 +153,12 @@ export default function Tickets() {
   const [filterTicketType, setFilterTicketType] = useState<string>('all');
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
+  const [allAgents, setAllAgents] = useState<any[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
-  const [showCreatedByMe, setShowCreatedByMe] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+  const [editSelectedAgents, setEditSelectedAgents] = useState<number[]>([]);
+  const [editSelectedNotifyUsers, setEditSelectedNotifyUsers] = useState<number[]>([]);
 
   useEffect(() => {
     console.log('useEffect running for fetchTickets');
@@ -163,16 +167,14 @@ export default function Tickets() {
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [currentPage, perPage, searchTerm, sortField, sortOrder, showCreatedByMe]);
+  }, [currentPage, perPage, searchTerm, sortField, sortOrder]);
 
   useEffect(() => {
     fetchCustomers();
     fetchStatuses();
     fetchPriorities();
-    // Only fetch agents if user is admin (role_id = 1)
-    if (user?.role_id === 1) {
-      fetchAgents();
-    }
+    fetchBranches();
+    fetchAgents();
   }, []);
 
 
@@ -200,7 +202,6 @@ export default function Tickets() {
           start_date: filterStartDate || null,
           end_date: filterEndDate || null,
           ticket_type: filterTicketType !== 'all' ? filterTicketType : null,
-          created_by: showCreatedByMe ? user?.id : null,
         },
       });
 
@@ -254,11 +255,25 @@ export default function Tickets() {
     setLoadingAgents(true);
     try {
       const response = await axios.get('/agent-users');
-      setAgents(response.data || []);
+      const agentsData = response.data || [];
+      setAllAgents(agentsData);
+      setAgents(agentsData);
     } catch (err) {
       console.error('Error fetching agents:', err);
     } finally {
       setLoadingAgents(false);
+    }
+  };
+
+  const fetchBranches = async () => {
+    setLoadingBranches(true);
+    try {
+      const response = await axios.get('/branches');
+      setBranches(response.data || []);
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+    } finally {
+      setLoadingBranches(false);
     }
   };
 
@@ -400,11 +415,15 @@ export default function Tickets() {
       status: ticket.status,
       priority: ticket.priority,
       due_date: ticket.due_date,
+      closed_time: ticket.closed_time,
       customer_id: ticket.customer_id || ticket.customer?.id,
       ticket_type: ticket.ticket_type,
       branch_id: ticket.branch_id,
       service_id: ticket.service_id,
     });
+    // Set selected agents and notify users
+    setEditSelectedAgents(ticket.agent?.map(a => a.id) || []);
+    setEditSelectedNotifyUsers(ticket.notify_to?.map(u => u.id) || []);
     setEditModalOpen(true);
   };
 
@@ -414,24 +433,84 @@ export default function Tickets() {
     } else {
       setEditFormData(prev => ({ ...prev, [field]: value }));
     }
+
+    // When branch is changed, filter users by selected branch for all users
+    if (field === 'branch_id') {
+      if (value) {
+        // Filter users by selected branch
+        const filteredAgents = allAgents.filter((u: any) => u.branch_id === parseInt(value as string));
+        setAgents(filteredAgents.length > 0 ? filteredAgents : allAgents);
+        // Clear selected agents/notify users if they're not in the new branch
+        if (filteredAgents.length > 0) {
+          setEditSelectedAgents(prev => prev.filter(id => filteredAgents.some(u => u.id === id)));
+          setEditSelectedNotifyUsers(prev => prev.filter(id => filteredAgents.some(u => u.id === id)));
+        }
+      } else {
+        // If no branch selected, show all users
+        setAgents(allAgents);
+      }
+    }
   };
 
   const handleSaveEdit = async () => {
     if (!editingTicket) return;
-    
+
+    // Validate required fields
+    if (!editFormData.customer_id) {
+      toast.error('Please select a customer');
+      return;
+    }
+    if (!editFormData.issue) {
+      toast.error('Please enter an issue title');
+      return;
+    }
+    if (!editFormData.status) {
+      toast.error('Please select a status');
+      return;
+    }
+    if (!editFormData.priority) {
+      toast.error('Please select a priority');
+      return;
+    }
+    if (!editFormData.due_date) {
+      toast.error('Please select a due date');
+      return;
+    }
+    if (!editFormData.closed_time) {
+      toast.error('Please select a time');
+      return;
+    }
+    if (editSelectedAgents.length === 0) {
+      toast.error('Please assign at least one agent');
+      return;
+    }
+    if (editSelectedNotifyUsers.length === 0) {
+      toast.error('Please select at least one user to notify');
+      return;
+    }
+    if (!editFormData.branch_id) {
+      toast.error('Please select a branch');
+      return;
+    }
+
     setSaving(true);
     try {
       const response = await axios.put(`/tickets/${editingTicket.id}`, {
-        issue: editFormData.issue,
-        description: editFormData.description
+        ...editFormData,
+        assigned_users: editSelectedAgents,
+        notify_users: editSelectedNotifyUsers
       });
       const updatedTicket = response.data.ticket || response.data;
-      setTickets(prev => prev.map(t => t.id === editingTicket.id ? { ...t, issue: editFormData.issue, description: editFormData.description } : t));
+      toast.success('Ticket updated successfully');
+      fetchTickets(); // Refresh the list
       setEditModalOpen(false);
       setEditingTicket(null);
       setEditFormData({});
+      setEditSelectedAgents([]);
+      setEditSelectedNotifyUsers([]);
     } catch (err) {
       console.error('Error updating ticket:', err);
+      toast.error('Failed to update ticket');
     } finally {
       setSaving(false);
     }
@@ -714,34 +793,6 @@ export default function Tickets() {
                   </Button>
                 </div>
 
-                {/* Tickets Created By Me Link - Only show for agent users (role_id=2) */}
-                {user?.role_id === 2 && (
-                  <div className="lg:ml-auto mt-2 lg:mt-0">
-                    <button
-                      onClick={() => {
-                        // Toggle the created by me filter
-                        setShowCreatedByMe(!showCreatedByMe);
-                        // Clear other filters when toggling this filter
-                        if (!showCreatedByMe) {
-                          setFilterStatus('all');
-                          setFilterCustomer('all');
-                          setFilterAgent('all');
-                          setFilterTicketType('all');
-                          setFilterStartDate('');
-                          setFilterEndDate('');
-                        }
-                      }}
-                      className={`text-sm font-medium px-3 py-2 rounded transition-colors whitespace-nowrap ${
-                        showCreatedByMe
-                          ? 'text-blue-700 bg-blue-50 hover:bg-blue-100'
-                          : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-                      }`}
-                      title="Show tickets you created (not just assigned to you)"
-                    >
-                      {showCreatedByMe ? '✓ ' : ''}Tickets Created By Me
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1076,44 +1127,255 @@ export default function Tickets() {
         </div>
 
         <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-          <DialogContent style={{ width: '400px', maxWidth: '90vw' }}>
+          <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Ticket</DialogTitle>
               <DialogDescription>
                 Make changes to ticket #{editingTicket?.tracking_number}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+              {/* Customer */}
               <div className="grid gap-2">
-                <Label htmlFor="issue">Ticket Issue</Label>
+                <Label htmlFor="edit-customer">Customer <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editFormData.customer_id?.toString() || ''}
+                  onValueChange={(value) => handleEditFormChange('customer_id', parseInt(value))}
+                >
+                  <SelectTrigger id="edit-customer">
+                    <SelectValue placeholder="Select a customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id.toString()}>
+                        {customer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Issue */}
+              <div className="grid gap-2">
+                <Label htmlFor="edit-issue">Issue <span className="text-red-500">*</span></Label>
                 <Input
-                  id="issue"
+                  id="edit-issue"
                   value={editFormData.issue || ''}
                   onChange={(e) => handleEditFormChange('issue', e.target.value)}
                   placeholder="Enter ticket issue"
+                  required
                 />
               </div>
+
+              {/* Description */}
               <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="edit-description">Description</Label>
                 <Textarea
-                  id="description"
+                  id="edit-description"
                   value={editFormData.description || ''}
                   onChange={(e) => handleEditFormChange('description', e.target.value)}
-                  rows={4}
+                  rows={3}
                   placeholder="Enter ticket description"
                 />
               </div>
+
+              {/* Status and Priority */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-status">Status <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={editFormData.status?.toString() || ''}
+                    onValueChange={(value) => handleEditFormChange('status', parseInt(value))}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statuses.map((status) => (
+                        <SelectItem key={status.id} value={status.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            {status.color_code && (
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: status.color_code }}
+                              />
+                            )}
+                            {status.status}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-priority">Priority <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={editFormData.priority?.toString() || ''}
+                    onValueChange={(value) => handleEditFormChange('priority', parseInt(value))}
+                  >
+                    <SelectTrigger id="edit-priority">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {priorities.map((priority) => (
+                        <SelectItem key={priority.id} value={priority.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            {priority.color && (
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: priority.color }}
+                              />
+                            )}
+                            {priority.title}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Due Date and Time */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-due-date">Due Date <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="edit-due-date"
+                    type="date"
+                    value={editFormData.due_date || ''}
+                    onChange={(e) => handleEditFormChange('due_date', e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-time">Time <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="edit-time"
+                    type="time"
+                    value={editFormData.closed_time || ''}
+                    onChange={(e) => handleEditFormChange('closed_time', e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Branch - For Admin users, this filters Assigned To and Notify To */}
+              <div className="grid gap-2">
+                <Label htmlFor="edit-branch">Branch <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editFormData.branch_id?.toString() || ''}
+                  onValueChange={(value) => handleEditFormChange('branch_id', value)}
+                >
+                  <SelectTrigger id="edit-branch">
+                    <SelectValue placeholder="Select a branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                        {branch.branch_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {editFormData.branch_id && (
+                  <p className="text-xs text-gray-500">Users below will be filtered by selected branch</p>
+                )}
+              </div>
+
+              {/* Assigned To */}
+              <div className="grid gap-2">
+                <Label>Assigned To <span className="text-red-500">*</span></Label>
+                <div className="border rounded-md p-2 max-h-32 overflow-y-auto">
+                  {agents.map((agent) => (
+                    <label key={agent.id} className="flex items-center gap-2 py-1 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editSelectedAgents.includes(agent.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditSelectedAgents([...editSelectedAgents, agent.id]);
+                          } else {
+                            setEditSelectedAgents(editSelectedAgents.filter(id => id !== agent.id));
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm">{agent.name}</span>
+                    </label>
+                  ))}
+                  {agents.length === 0 && (
+                    <div className="text-sm text-gray-500">No agents available</div>
+                  )}
+                </div>
+                {editSelectedAgents.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {editSelectedAgents.map(agentId => {
+                      const agent = agents.find(a => a.id === agentId);
+                      return agent ? (
+                        <span key={agentId} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100">
+                          {agent.name}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Notify To */}
+              <div className="grid gap-2">
+                <Label>Notify To <span className="text-red-500">*</span></Label>
+                <div className="border rounded-md p-2 max-h-32 overflow-y-auto">
+                  {agents.map((agent) => (
+                    <label key={agent.id} className="flex items-center gap-2 py-1 hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editSelectedNotifyUsers.includes(agent.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setEditSelectedNotifyUsers([...editSelectedNotifyUsers, agent.id]);
+                          } else {
+                            setEditSelectedNotifyUsers(editSelectedNotifyUsers.filter(id => id !== agent.id));
+                          }
+                        }}
+                        className="rounded border-gray-300"
+                      />
+                      <span className="text-sm">{agent.name}</span>
+                    </label>
+                  ))}
+                  {agents.length === 0 && (
+                    <div className="text-sm text-gray-500">No users available</div>
+                  )}
+                </div>
+                {editSelectedNotifyUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {editSelectedNotifyUsers.map(userId => {
+                      const user = agents.find(a => a.id === userId);
+                      return user ? (
+                        <span key={userId} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100">
+                          {user.name}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                )}
+              </div>
+
             </div>
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setEditModalOpen(false)}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditSelectedAgents([]);
+                  setEditSelectedNotifyUsers([]);
+                }}
               >
                 Cancel
               </Button>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 onClick={handleSaveEdit}
                 disabled={saving}
                 variant="default"

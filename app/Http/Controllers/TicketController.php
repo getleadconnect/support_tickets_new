@@ -30,19 +30,23 @@ class TicketController extends Controller
         $query = Ticket::with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'activity.user', 'activity.status', 'activity.priority']);
         
         // Filter tickets based on user role
-        // Check if filtering by created_by first
-        if ($request->has('created_by') && $request->created_by != null) {
-            // When filtering by created_by, show those tickets regardless of assignment
-            // This allows agents to see tickets they created even if not assigned to them
-            // The created_by filter will be applied below
-        } elseif ($user->role_id == 2) {
-            // Agents (role_id = 2) see only tickets assigned to them by default
-            $query->whereHas('agent', function($q) use ($user) {
-                $q->where('agent_id', $user->id);
+        if ($user->role_id == 2) {
+            // Agents (role_id = 2) see tickets from their branch that are either assigned to them OR notified to them
+            $query->where(function($q) use ($user) {
+                // Must be either assigned or notified to this agent
+                $q->whereHas('agent', function($subQ) use ($user) {
+                    $subQ->where('agent_id', $user->id);
+                })->orWhereHas('notifyTo', function($subQ) use ($user) {
+                    $subQ->where('agent_id', $user->id);
+                });
             });
-            // Also filter by branch if they have one
+
+            // AND must be from their branch (or NULL branch for backwards compatibility)
             if ($user->branch_id) {
-                $query->where('branch_id', $user->branch_id);
+                $query->where(function($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
             }
 
         } elseif ($user->role_id == 4  or $user->role_id == 3 ) {
@@ -84,10 +88,6 @@ class TicketController extends Controller
             });
         }
 
-        // Created by filter - filter tickets by who created them
-        if ($request->has('created_by') && $request->created_by != null) {
-            $query->where('created_by', $request->created_by);
-        }
 
         // Date range filter
         if ($request->has('start_date') && $request->start_date != null) {
@@ -102,7 +102,7 @@ class TicketController extends Controller
             $prefix = $request->ticket_type;
             $query->where('tracking_number', 'like', $prefix . '%');
         }
-        
+
         // Sorting
         $sortField = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -391,11 +391,21 @@ class TicketController extends Controller
      */
     public function destroy(Ticket $ticket)
     {
-        $ticket->delete();
+        $user_id=Auth::user()->id;
+        if($ticket->created_by===$user_id or Auth::user()->role_id===1)
+            {        
+                $ticket->delete();
+                return response()->json([
+                        'message' => 'Ticket deleted successfully'
+                    ]);
 
-        return response()->json([
-            'message' => 'Ticket deleted successfully'
-        ]);
+            }
+            else
+            {
+                    return response()->json([
+                            'message' => "Can't remove this ticket."
+                        ]);
+            }
     }
     
     /**

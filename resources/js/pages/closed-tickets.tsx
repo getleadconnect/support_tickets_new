@@ -392,9 +392,9 @@ export default function ClosedTickets() {
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8"
+                            className="text-gray-600 border-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-600 h-8 w-8"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Edit, Trash2, User, Phone, Mail, Calendar, Clock, Building, Tag, PlusCircle, MessageSquare, Paperclip, Download, FileText, Package } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { AddInvoiceModal } from './AddInvoiceModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TicketDetailsModalProps {
   ticket: any;
@@ -105,15 +106,18 @@ interface SparePart {
   product?: Product;
 }
 
-export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({ 
-  ticket, 
-  isOpen, 
+export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
+  ticket,
+  isOpen,
   onClose,
-  onUpdate 
+  onUpdate
 }) => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState([]);
-  const [notifyUsers, setNotifyUsers] = useState([]);
+  const { user } = useAuth();
+  const [users, setUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [notifyUsers, setNotifyUsers] = useState<any[]>([]);
+  const [allNotifyUsers, setAllNotifyUsers] = useState<any[]>([]);
   const [selectedAssignees, setSelectedAssignees] = useState<SelectedUser[]>([]);
   const [selectedNotifyUsers, setSelectedNotifyUsers] = useState<SelectedUser[]>([]);
   const [status, setStatus] = useState('');
@@ -665,19 +669,28 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
     if (isOpen && ticket) {
       console.log('Modal opened with ticket:', ticket);
       setCurrentTicket(ticket);
-      fetchUsers();
+
+      // Set the ticket's branch first
+      const ticketBranch = ticket.branch_id ? ticket.branch_id.toString() : '';
+      setBranch(ticketBranch);
+
+      // Fetch all data
       fetchTicketStatuses();
       fetchPriorities();
       fetchBranches();
       fetchTicketLabels();
       fetchAdditionalFields();
       fetchTicketAdditionalFields(ticket.id);
+
+      // Fetch users and filter by the ticket's branch
+      fetchUsers(ticketBranch);
+
+      // Set other ticket data
       setStatus(ticket.status ? ticket.status.toString() : '1');
       setPriority(ticket.priority ? ticket.priority.toString() : '2');
       // Extract date part from datetime string (YYYY-MM-DD from YYYY-MM-DD HH:MM:SS)
       setDueDate(ticket.due_date ? ticket.due_date.split(' ')[0] : '');
       setDueTime(ticket.closed_time || ticket.due_time || '');
-      setBranch(ticket.branch_id ? ticket.branch_id.toString() : '');
       
       // Set assigned agents from the agent relationship
       if (ticket.agent && Array.isArray(ticket.agent)) {
@@ -720,15 +733,43 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
     }
   }, [isOpen, ticket]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (initialBranch?: string) => {
     try {
-      const response = await axios.get('/users');
-      const allUsers = response.data.data || response.data || [];
-      setUsers(allUsers);
-      // Filter users with role_id === 2 for notify dropdown and task assignment
-      const roleId2Users = allUsers.filter(user => user.role_id === 2);
-      setNotifyUsers(roleId2Users);
-      setTaskUsers(roleId2Users); // Set users for task assignment
+      const response = await axios.get('/agent-users');
+      const fetchedUsers = response.data || [];
+
+      // Store all users
+      setAllUsers(fetchedUsers);
+      setAllNotifyUsers(fetchedUsers);
+
+      // Filter users with role_id === 2 for task assignment
+      const roleId2Users = fetchedUsers.filter((user: any) => user.role_id === 2);
+      setTaskUsers(roleId2Users);
+
+      // Use the provided branch or the current branch state
+      const branchToFilter = initialBranch || branch;
+
+      if (branchToFilter) {
+        // Filter users by the branch
+        const branchIdNum = parseInt(branchToFilter);
+        const filteredUsers = fetchedUsers.filter((u: any) => u.branch_id === branchIdNum);
+        const filteredNotifyUsers = fetchedUsers.filter((u: any) => u.branch_id === branchIdNum);
+
+        // Set filtered users
+        if (user?.role_id === 1) {
+          // Admin users - show filtered or all if no matches
+          setUsers(filteredUsers.length > 0 ? filteredUsers : fetchedUsers);
+          setNotifyUsers(filteredNotifyUsers.length > 0 ? filteredNotifyUsers : fetchedUsers);
+        } else {
+          // Non-admin users - always filter by branch
+          setUsers(filteredUsers);
+          setNotifyUsers(filteredNotifyUsers);
+        }
+      } else {
+        // No branch selected, show all users
+        setUsers(fetchedUsers);
+        setNotifyUsers(fetchedUsers);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -768,9 +809,42 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
   const fetchBranches = async () => {
     try {
       const response = await axios.get('/branches');
-      setBranches(response.data || []);
+      const branchesData = response.data || [];
+
+      // For non-admin users, filter branches to show only their branch
+      if (user?.role_id !== 1 && user?.branch_id) {
+        const userBranch = branchesData.filter((b: any) => b.id === user.branch_id);
+        setBranches(userBranch);
+      } else {
+        setBranches(branchesData);
+      }
     } catch (error) {
       console.error('Error fetching branches:', error);
+    }
+  };
+
+  const filterUsersByBranch = (branchId: string) => {
+    if (!branchId || branchId === '') {
+      // If no branch selected, show all users
+      setUsers(allUsers);
+      setNotifyUsers(allNotifyUsers);
+      return;
+    }
+
+    const branchIdNum = parseInt(branchId);
+
+    // Filter users by branch
+    const filteredUsers = allUsers.filter((u: any) => u.branch_id === branchIdNum);
+    const filteredNotifyUsers = allNotifyUsers.filter((u: any) => u.branch_id === branchIdNum);
+
+    // If admin user, show filtered users or all users if no match
+    if (user?.role_id === 1) {
+      setUsers(filteredUsers.length > 0 ? filteredUsers : allUsers);
+      setNotifyUsers(filteredNotifyUsers.length > 0 ? filteredNotifyUsers : allNotifyUsers);
+    } else {
+      // For non-admin users, always filter by branch
+      setUsers(filteredUsers);
+      setNotifyUsers(filteredNotifyUsers);
     }
   };
 
@@ -1191,6 +1265,30 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
               </div>
 
 
+              {/* Branch - Filters users in Assigned To and Notify To */}
+              <div className="mb-4">
+                <Label className="text-xs text-gray-600 font-normal">Branch</Label>
+                <Select value={branch} onValueChange={(value) => {
+                  setBranch(value);
+                  filterUsersByBranch(value);
+                  handleUpdateTicket({ newBranch: value });
+                }}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Select branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                        {branch.branch || branch.branch_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {branch && (
+                  <p className="text-xs text-gray-500 mt-1">Users below are filtered by selected branch</p>
+                )}
+              </div>
+
               {/* Assigned To */}
               <div className="mb-4">
                 <Label className="text-xs text-gray-600 font-normal">Assigned To</Label>
@@ -1387,25 +1485,6 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
                 </div>
               </div>
 
-              {/* Branch */}
-              <div className="mb-4">
-                <Label className="text-xs text-gray-600 font-normal">Branch</Label>
-                <Select value={branch} onValueChange={(value) => {
-                  setBranch(value);
-                  handleUpdateTicket({ newBranch: value });
-                }}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id.toString()}>
-                        {branch.branch}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
 
               {/* Ticket Label */}
               <div className="mb-4">
