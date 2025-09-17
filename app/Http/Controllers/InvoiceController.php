@@ -204,56 +204,70 @@ class InvoiceController extends Controller
      */
     public function downloadPDF($id)
     {
-        $user = auth()->user();
-        $invoice = Invoice::with(['customer', 'ticket', 'createdBy', 'branch'])->findOrFail($id);
-        
-        // Check if user has access to this invoice
-        if ($user->role_id != 1 && $user->branch_id && $invoice->branch_id != $user->branch_id) {
-            abort(403, 'Unauthorized');
+        try {
+            $user = auth()->user();
+            $invoice = Invoice::with(['customer', 'ticket', 'createdBy', 'branch'])->findOrFail($id);
+
+            // Check if user has access to this invoice
+            if ($user->role_id != 1 && $user->branch_id && $invoice->branch_id != $user->branch_id) {
+                abort(403, 'Unauthorized');
+            }
+
+            // Get company info
+            $company = Company::first();
+
+            // Get spare parts for this ticket directly from ProductTicket
+            $spareParts = ProductTicket::with('product')
+                ->where('ticket_id', $invoice->ticket_id)
+                ->get();
+
+            // Calculate totals
+            $sparePartsTotal = $spareParts->sum('total_price');
+            $totalAmount = $invoice->item_cost + $invoice->service_charge;
+
+            // Check if payment exists and get discount
+            $payment = DB::table('payments')
+                ->where('invoice_id', $invoice->id)
+                ->first();
+
+            $discount = $payment ? $payment->discount : 0;
+            $netAmount = $totalAmount - $discount;
+
+            // Convert amount to words (Indian numbering system)
+            $amountInWords = $this->convertNumberToWords($netAmount);
+
+            $data = [
+                'invoice' => $invoice,
+                'company' => $company,
+                'spareParts' => $spareParts,
+                'sparePartsTotal' => $sparePartsTotal,
+                'totalAmount' => $totalAmount,
+                'discount' => $discount,
+                'netAmount' => $netAmount,
+                'amountInWords' => $amountInWords
+            ];
+
+            // Set DomPDF options to handle missing GD extension
+            $pdf = Pdf::loadView('invoices.pdf', $data);
+            $pdf->setPaper('A4', 'portrait');
+
+            // Set options to avoid GD dependency
+            $pdf->setOption('isHtml5ParserEnabled', true);
+            $pdf->setOption('isRemoteEnabled', true);
+            $pdf->setOption('isFontSubsettingEnabled', true);
+
+            // Return the PDF download with proper headers
+            return response($pdf->output())
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'attachment; filename="invoice-' . $invoice->invoice_id . '.pdf"')
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
+
+        } catch (\Exception $e) {
+            \Log::error('Invoice PDF generation error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to generate PDF: ' . $e->getMessage()], 500);
         }
-        
-        // Get company info
-        $company = Company::first();
-        
-        // Get spare parts for this ticket directly from ProductTicket
-        $spareParts = ProductTicket::with('product')
-            ->where('ticket_id', $invoice->ticket_id)
-            ->get();
-        
-        // Calculate totals
-        $sparePartsTotal = $spareParts->sum('total_price');
-        $totalAmount = $invoice->item_cost + $invoice->service_charge;
-        
-        // Check if payment exists and get discount
-        $payment = DB::table('payments')
-            ->where('invoice_id', $invoice->id)
-            ->first();
-        
-        $discount = $payment ? $payment->discount : 0;
-        $netAmount = $totalAmount - $discount;
-        
-        // Convert amount to words (Indian numbering system)
-        $amountInWords = $this->convertNumberToWords($netAmount);
-        
-        $data = [
-            'invoice' => $invoice,
-            'company' => $company,
-            'spareParts' => $spareParts,
-            'sparePartsTotal' => $sparePartsTotal,
-            'totalAmount' => $totalAmount,
-            'discount' => $discount,
-            'netAmount' => $netAmount,
-            'amountInWords' => $amountInWords
-        ];
-        
-        $pdf = Pdf::loadView('invoices.pdf', $data);
-        $pdf->setPaper('A4', 'portrait');
-        $pdf->setOption('margin-top', 30);
-        $pdf->setOption('margin-right', 30);
-        $pdf->setOption('margin-bottom', 30);
-        $pdf->setOption('margin-left', 30);
-        
-        return $pdf->download('invoice-' . $invoice->invoice_id . '.pdf');
     }
     
     /**

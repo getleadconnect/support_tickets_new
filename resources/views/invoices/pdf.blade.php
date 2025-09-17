@@ -185,7 +185,15 @@ $logo=\App\Models\Company::pluck('logo')->first();
         <!-- Header -->
         <div class="header">
             <div class="header-left">
-                <div class="logo-placeholder"><img src="{{$logo}}" style="margin-left:200px;"></div>
+                <div class="logo-placeholder">
+                    @if($logo && extension_loaded('gd'))
+                        <img src="{{$logo}}" style="margin-left:200px;">
+                    @else
+                        <div style="margin-left:200px; padding: 20px; border: 1px solid #ccc; display: inline-block;">
+                            <strong>LOGO</strong>
+                        </div>
+                    @endif
+                </div>
                 <div class="company-name" style="margin-top:10px;">{{ $company ? $company->company_name : 'GETLEAD ANALYTICS PVT.LTD' }}</div>
             </div>
             <div class="header-right">
