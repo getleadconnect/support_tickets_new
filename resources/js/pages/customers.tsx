@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import toast from 'react-hot-toast';
+import { CountryCodePicker } from '@/components/CountryCodePicker';
 
 interface Ticket {
   id: number;
@@ -99,7 +100,7 @@ export default function Customers() {
     const debounceTimer = setTimeout(() => {
       fetchCustomers();
     }, 300);
-    
+
     return () => clearTimeout(debounceTimer);
   }, [currentPage, perPage, searchTerm]);
 
@@ -298,7 +299,8 @@ export default function Customers() {
       const payload: any = {
         name: customerFormData.name.trim(),
         email: customerFormData.email.trim() || null,
-        contact_number: customerFormData.countryCode + customerFormData.mobile || null,
+        country_code: customerFormData.countryCode || '+91',
+        contact_number: customerFormData.mobile || null,
         company_name: customerFormData.companyName.trim() || null
       };
       
@@ -462,16 +464,17 @@ export default function Customers() {
     if (!editingCustomer) return;
 
     setSavingCustomer(true);
-    
+
     try {
       const payload: any = {
         name: customerFormData.name.trim(),
         email: customerFormData.email.trim() || null,
-        contact_number: customerFormData.countryCode + customerFormData.mobile || null,
+        country_code: customerFormData.countryCode || '+91',
+        contact_number: customerFormData.mobile || null,
         company_name: customerFormData.companyName.trim() || null
       };
-      
-      // Add branch_id 
+
+      // Add branch_id
       if (customerFormData.branchId) {
         payload.branch_id = parseInt(customerFormData.branchId);
       } else if (currentUser?.role_id !== 1 && currentUser?.branch_id) {
@@ -808,24 +811,11 @@ export default function Customers() {
             <div className="grid gap-2">
               <Label htmlFor="mobile">Mobile Number</Label>
               <div className="flex gap-2">
-                <Select
+                <CountryCodePicker
                   value={customerFormData.countryCode}
-                  onValueChange={(value) => handleCustomerFormChange('countryCode', value)}
-                >
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="+91">+91 (IN)</SelectItem>
-                    <SelectItem value="+1">+1 (US)</SelectItem>
-                    <SelectItem value="+44">+44 (UK)</SelectItem>
-                    <SelectItem value="+61">+61 (AU)</SelectItem>
-                    <SelectItem value="+86">+86 (CN)</SelectItem>
-                    <SelectItem value="+81">+81 (JP)</SelectItem>
-                    <SelectItem value="+49">+49 (DE)</SelectItem>
-                    <SelectItem value="+33">+33 (FR)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handleCustomerFormChange('countryCode', value)}
+                  className="w-28"
+                />
                 <Input
                   id="mobile"
                   placeholder="Enter mobile number"
@@ -933,24 +923,11 @@ export default function Customers() {
             <div className="grid gap-2">
               <Label htmlFor="edit-mobile">Mobile Number</Label>
               <div className="flex gap-2">
-                <Select
+                <CountryCodePicker
                   value={customerFormData.countryCode}
-                  onValueChange={(value) => handleCustomerFormChange('countryCode', value)}
-                >
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="+91">+91 (IN)</SelectItem>
-                    <SelectItem value="+1">+1 (US)</SelectItem>
-                    <SelectItem value="+44">+44 (UK)</SelectItem>
-                    <SelectItem value="+61">+61 (AU)</SelectItem>
-                    <SelectItem value="+86">+86 (CN)</SelectItem>
-                    <SelectItem value="+81">+81 (JP)</SelectItem>
-                    <SelectItem value="+49">+49 (DE)</SelectItem>
-                    <SelectItem value="+33">+33 (FR)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handleCustomerFormChange('countryCode', value)}
+                  className="w-28"
+                />
                 <Input
                   id="edit-mobile"
                   placeholder="Enter mobile number"

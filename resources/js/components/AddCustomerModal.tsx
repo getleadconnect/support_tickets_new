@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { X } from 'lucide-react';
+import { CountryCodePicker } from '@/components/CountryCodePicker';
 
 interface AddCustomerModalProps {
   open: boolean;
@@ -19,14 +20,15 @@ interface AddCustomerModalProps {
   onCustomerAdded?: (customer: any) => void;
 }
 
-export function AddCustomerModal({ 
-  open, 
+export function AddCustomerModal({
+  open,
   onOpenChange,
-  onCustomerAdded 
+  onCustomerAdded
 }: AddCustomerModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    country_code: '+91',
     contact_number: '',
     email: '',
     company_name: ''
@@ -62,6 +64,7 @@ export function AddCustomerModal({
       // Reset form
       setFormData({
         name: '',
+        country_code: '+91',
         contact_number: '',
         email: '',
         company_name: ''
@@ -87,6 +90,7 @@ export function AddCustomerModal({
     // Reset form when closing
     setFormData({
       name: '',
+      country_code: '+91',
       contact_number: '',
       email: '',
       company_name: ''
@@ -121,10 +125,11 @@ export function AddCustomerModal({
           <div className="grid gap-2">
             <Label htmlFor="contact_number">Contact Number</Label>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 px-2 py-1 border rounded-md bg-gray-50">
-                <span className="text-green-600">🇮🇳</span>
-                <span className="text-sm">+91</span>
-              </div>
+              <CountryCodePicker
+                value={formData.country_code}
+                onChange={(value) => handleFormChange('country_code', value)}
+                className="w-28"
+              />
               <Input
                 id="contact_number"
                 value={formData.contact_number}
@@ -134,7 +139,7 @@ export function AddCustomerModal({
                   handleFormChange('contact_number', value);
                 }}
                 placeholder="9876543210"
-                maxLength={10}
+                maxLength={15}
                 className="flex-1"
               />
             </div>

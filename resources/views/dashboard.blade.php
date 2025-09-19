@@ -8,6 +8,21 @@
     <meta name="app-url" content="{{ config('app.url') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" href="{{ asset('favicon.ico') }}">
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Wait for jQuery to load -->
+    <script>
+        window.jQuery = window.$ = jQuery;
+    </script>
+
+    <!-- Country Code Picker CSS -->
+    <link rel="stylesheet" href="{{ asset('css/jquery.ccpicker.css') }}">
+
+    <!-- Country Code Picker JS -->
+    <script src="{{ asset('js/jquery.ccpicker.js') }}"></script>
+
     @vite(['resources/css/app.css', 'resources/js/app.jsx'])
 </head>
 <body class="antialiased">

@@ -83,17 +83,32 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
+            'country_code' => 'nullable|string|max:10',
             'contact_number' => 'nullable|string|max:20',
             'company_name' => 'nullable|string|max:255',
             'branch_id' => 'nullable|exists:branches,id',
         ]);
 
-        // Set default country code
-        $validated['country_code'] = '+91';
-        
+        // Set default country code if not provided
+        if (!isset($validated['country_code']) || empty($validated['country_code'])) {
+            $validated['country_code'] = '+91';
+        }
+
+        // Map contact_number to mobile field
+        if (isset($validated['contact_number']) && !empty($validated['contact_number'])) {
+            $validated['mobile'] = $validated['contact_number'];
+        } else {
+            $validated['mobile'] = null;
+        }
+
+        // Remove contact_number from validated array as we use mobile field
+        if (isset($validated['contact_number'])) {
+            unset($validated['contact_number']);
+        }
+
         // Set created_by to the authenticated user
         $validated['created_by'] = auth()->id() ?? 1;
-        
+
         // Handle branch_id assignment
         $user = auth()->user();
         if ($user->role_id != 1) {
@@ -101,19 +116,6 @@ class CustomerController extends Controller
             $validated['branch_id'] = $user->branch_id;
         }
         // Admin users can specify branch_id or it will be from request
-        
-        // Handle mobile number
-        if (!empty($validated['contact_number'])) {
-            // If the number doesn't start with +91, add it
-            if (!str_starts_with($validated['contact_number'], '+91')) {
-                $validated['mobile'] = '+91' . $validated['contact_number'];
-            } else {
-                $validated['mobile'] = $validated['contact_number'];
-            }
-            unset($validated['contact_number']);
-        } else {
-            $validated['mobile'] = null;
-        }
 
         $customer = Customer::create($validated);
         
@@ -132,10 +134,11 @@ class CustomerController extends Controller
     public function update(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
+            'country_code' => 'nullable|string|max:10',
             'contact_number' => 'nullable|string|max:20',
             'company_name' => 'nullable|string|max:255',
             'branch_id' => 'nullable|exists:branches,id',
@@ -143,18 +146,17 @@ class CustomerController extends Controller
 
         // Handle mobile number
         if (!empty($validated['contact_number'])) {
-            // Extract country code and mobile number
-            if (preg_match('/^(\+\d{1,3})(.*)$/', $validated['contact_number'], $matches)) {
-                $validated['country_code'] = $matches[1];
-                $validated['mobile'] = $validated['country_code'] . $matches[2];
-            } else {
+            // Use country_code from request if provided, otherwise default to +91
+            if (!isset($validated['country_code']) || empty($validated['country_code'])) {
                 $validated['country_code'] = '+91';
-                $validated['mobile'] = '+91' . $validated['contact_number'];
             }
+            $validated['mobile'] = $validated['contact_number'];
             unset($validated['contact_number']);
         } else {
             $validated['mobile'] = null;
-            $validated['country_code'] = null;
+            if (!isset($validated['country_code'])) {
+                $validated['country_code'] = null;
+            }
         }
 
         $customer->update($validated);
