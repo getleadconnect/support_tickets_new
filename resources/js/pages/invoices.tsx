@@ -5,8 +5,9 @@ import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Printer, DollarSign } from 'lucide-react';
+import { Download, Printer, DollarSign, Eye } from 'lucide-react';
 import { PayInvoiceModal } from '@/components/PayInvoiceModal';
+import { InvoiceDetailsOffcanvas } from '@/components/InvoiceDetailsOffcanvas';
 import toast from 'react-hot-toast';
 
 interface Invoice {
@@ -52,6 +53,10 @@ export default function Invoices() {
   // Payment modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+
+  // Invoice details offcanvas states
+  const [showDetailsOffcanvas, setShowDetailsOffcanvas] = useState(false);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchInvoices();
@@ -118,6 +123,11 @@ export default function Invoices() {
     setShowPaymentModal(false);
     setSelectedInvoice(null);
     fetchInvoices();
+  };
+
+  const handleViewDetails = (invoiceId: number) => {
+    setSelectedInvoiceId(invoiceId);
+    setShowDetailsOffcanvas(true);
   };
 
   const handleDownloadInvoice = async (invoiceId: number) => {
@@ -300,9 +310,11 @@ export default function Invoices() {
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Ticket Id</th>
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Customer</th>
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Inv.Date</th>
-                <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Service Charge</th>
-                <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Item Cost</th>
-                <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Total Amount</th>
+                <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Service Charge</th>
+                <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Item Cost</th>
+                <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Total Amount</th>
+                <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Discount</th>
+                <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Net Amount</th>
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Created By</th>
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Pay.Status</th>
                 <th className="text-left p-2 text-sm font-medium">Action</th>
@@ -311,13 +323,13 @@ export default function Invoices() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-500">
+                  <td colSpan={13} className="text-center py-8 text-gray-500">
                     Loading invoices...
                   </td>
                 </tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-500">
+                  <td colSpan={13} className="text-center py-8 text-gray-500">
                     No invoices found
                   </td>
                 </tr>
@@ -325,7 +337,14 @@ export default function Invoices() {
                 invoices.map((invoice, index) => (
                   <tr key={invoice.id} className="border-b hover:bg-gray-50" style={{ borderColor: '#e4e4e4' }}>
                     <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{startIndex + index}</td>
-                    <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.invoice_id}</td>
+                    <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>
+                      <button
+                        onClick={() => handleViewDetails(invoice.id)}
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                      >
+                        {invoice.invoice_id}
+                      </button>
+                    </td>
                     <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.ticket_id}</td>
                     <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.customer?.name || 'N/A'}</td>
                     <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>
@@ -335,9 +354,11 @@ export default function Invoices() {
                         year: 'numeric'
                       }).replace(/\//g, '-')}
                     </td>
-                    <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.service_charge}</td>
-                    <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.item_cost}</td>
-                    <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.total_amount}</td>
+                    <td className="p-2 text-sm text-right border-r" style={{ borderColor: '#e4e4e4' }}>₹{invoice.service_charge}</td>
+                    <td className="p-2 text-sm text-right border-r" style={{ borderColor: '#e4e4e4' }}>₹{invoice.item_cost}</td>
+                    <td className="p-2 text-sm text-right border-r" style={{ borderColor: '#e4e4e4' }}>₹{invoice.total_amount}</td>
+                    <td className="p-2 text-sm text-right border-r" style={{ borderColor: '#e4e4e4' }}>₹{invoice.discount || 0}</td>
+                    <td className="p-2 text-sm text-right border-r font-semibold" style={{ borderColor: '#e4e4e4' }}>₹{invoice.net_amount || invoice.total_amount}</td>
                     <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>{invoice.createdBy?.name || 'Super Admin'}</td>
                     <td className="p-2 border-r" style={{ borderColor: '#e4e4e4' }}>
                       {getStatusBadge(invoice.status)}
@@ -399,7 +420,12 @@ export default function Invoices() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-gray-500">#{startIndex + index}</span>
-                        <span className="font-medium text-sm">{invoice.invoice_id}</span>
+                        <button
+                          onClick={() => handleViewDetails(invoice.id)}
+                          className="font-medium text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {invoice.invoice_id}
+                        </button>
                       </div>
                       <p className="text-xs text-gray-600">Ticket: #{invoice.ticket_id}</p>
                     </div>
@@ -427,9 +453,17 @@ export default function Invoices() {
                       <span className="text-gray-500">Items:</span>
                       <span>₹{invoice.item_cost}</span>
                     </div>
-                    <div className="flex justify-between font-medium pt-2 border-t" style={{ borderColor: '#e4e4e4' }}>
-                      <span>Total:</span>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Total:</span>
                       <span>₹{invoice.total_amount}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Discount:</span>
+                      <span>₹{invoice.discount || 0}</span>
+                    </div>
+                    <div className="flex justify-between font-medium pt-2 border-t" style={{ borderColor: '#e4e4e4' }}>
+                      <span>Net Amount:</span>
+                      <span>₹{invoice.net_amount || invoice.total_amount}</span>
                     </div>
                   </div>
                   
@@ -535,6 +569,16 @@ export default function Invoices() {
         onPaymentSuccess={handlePaymentSuccess}
       />
     )}
+
+    {/* Invoice Details Offcanvas */}
+    <InvoiceDetailsOffcanvas
+      isOpen={showDetailsOffcanvas}
+      onClose={() => {
+        setShowDetailsOffcanvas(false);
+        setSelectedInvoiceId(null);
+      }}
+      invoiceId={selectedInvoiceId}
+    />
     </DashboardLayout>
   );
 }

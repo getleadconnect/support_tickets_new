@@ -51,7 +51,7 @@ export function PayInvoiceModal({
         discount: parseFloat(discount) || 0
       };
 
-      const response = await axios.post(`/invoices/${invoice.id}/payment`, paymentData);
+      const response = await (window as any).axios.post(`/invoices/${invoice.id}/payment`, paymentData);
       
       if (response.data) {
         toast.success('Payment recorded successfully');

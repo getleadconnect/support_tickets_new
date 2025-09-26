@@ -128,6 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Invoice routes
     Route::get('/invoices/check-ticket/{ticketId}', [InvoiceController::class, 'checkInvoiceExists']);
     Route::get('/invoices/{invoice}/download', [InvoiceController::class, 'downloadPDF']);
+    Route::get('/invoices/{invoice}/details', [InvoiceController::class, 'getInvoiceDetails']);
     Route::apiResource('invoices', InvoiceController::class);
     
     // Payment routes

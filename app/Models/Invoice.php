@@ -21,6 +21,8 @@ class Invoice extends Model
         'item_cost',
         'service_charge',
         'total_amount',
+        'discount',
+        'net_amount',
         'payment_method',
         'status',
         'invoice_date',

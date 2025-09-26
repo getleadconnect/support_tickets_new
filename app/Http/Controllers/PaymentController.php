@@ -116,10 +116,12 @@ class PaymentController extends Controller
                 'created_by' => Auth::id() ?? 1,
             ]);
 
-            // Update invoice status to paid
+            // Update invoice with discount, net_amount, status and payment method
             $invoice->update([
                 'status' => 'paid',
-                'payment_method' => $validated['payment_mode']
+                'payment_method' => $validated['payment_mode'],
+                'discount' => $discount,
+                'net_amount' => $netAmount
             ]);
 
             DB::commit();

@@ -200,6 +200,75 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Get detailed invoice with parts breakdown
+     */
+    public function getInvoiceDetails($id)
+    {
+        try {
+            $user = auth()->user();
+            $invoice = Invoice::with(['customer', 'ticket', 'branch', 'createdBy'])
+                ->findOrFail($id);
+
+            // Check if user has access to this invoice
+            if ($user->role_id != 1 && $user->branch_id && $invoice->branch_id != $user->branch_id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            // Get spare parts used for this ticket from product_tickets table
+            $spareParts = ProductTicket::with(['product' => function($query) {
+                $query->select('id', 'name', 'code', 'brand_id', 'category_id', 'cost')
+                    ->with(['brand:id,brand', 'category:id,category']);
+            }])
+            ->where('ticket_id', $invoice->ticket_id)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'product_name' => $item->product->name ?? 'N/A',
+                    'product_code' => $item->product->code ?? 'N/A',
+                    'brand' => $item->product->brand->brand ?? 'N/A',
+                    'category' => $item->product->category->category ?? 'N/A',
+                    'quantity' => $item->quantity ?? 1,
+                    'unit_price' => $item->price ?? ($item->product->cost ?? 0),
+                    'total_price' => $item->total_price ?? (($item->quantity ?? 1) * ($item->price ?? $item->product->cost ?? 0)),
+                ];
+            });
+
+            // Calculate totals
+            $partsTotal = $spareParts->sum('total_price');
+            $serviceCharge = $invoice->service_charge ?? 0;
+            $grandTotal = $partsTotal + $serviceCharge;
+
+            // Get discount and net_amount from invoice table
+            $discount = $invoice->discount ?? 0;
+            $netTotal = $invoice->net_amount ?? ($grandTotal - $discount);
+
+            // Get payment record if exists
+            $payment = \App\Models\Payment::where('invoice_id', $invoice->id)->first();
+
+            return response()->json([
+                'invoice' => $invoice,
+                'spare_parts' => $spareParts,
+                'breakdown' => [
+                    'parts_total' => round($partsTotal, 2),
+                    'service_charge' => round($serviceCharge, 2),
+                    'sub_total' => round($grandTotal, 2),
+                    'discount' => round($discount, 2),
+                    'grand_total' => round($netTotal, 2),
+                ],
+                'payment' => $payment
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to fetch invoice details',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Download invoice as PDF
      */
     public function downloadPDF($id)
