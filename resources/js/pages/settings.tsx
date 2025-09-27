@@ -429,6 +429,7 @@ export default function Settings() {
   const [loadingQRCodes, setLoadingQRCodes] = useState(false);
   const [generatingQRCode, setGeneratingQRCode] = useState(false);
   const [qrcodeLink, setQrcodeLink] = useState(`${window.location.origin}/register`);
+  const [selectedQRBranch, setSelectedQRBranch] = useState<string>('');
   const [deletingQRCode, setDeletingQRCode] = useState<QRCodeItem | null>(null);
   const [deleteQRCodeModalOpen, setDeleteQRCodeModalOpen] = useState(false);
 
@@ -494,6 +495,15 @@ export default function Settings() {
     fetchAdditionalFields();
     fetchQRCodes();
   }, []);
+
+  // Update link when branch is selected
+  useEffect(() => {
+    if (selectedQRBranch) {
+      setQrcodeLink(`${window.location.origin}/register?branch_id=${selectedQRBranch}`);
+    } else {
+      setQrcodeLink(`${window.location.origin}/register`);
+    }
+  }, [selectedQRBranch]);
 
   useEffect(() => {
     // Filter brands based on search term
@@ -1773,22 +1783,30 @@ export default function Settings() {
   };
 
   const handleGenerateQRCode = async () => {
+    if (!selectedQRBranch) {
+      toast.error('Please select a branch');
+      return;
+    }
+
     if (!qrcodeLink.trim()) {
       toast.error('Please enter a valid link');
       return;
     }
 
     setGeneratingQRCode(true);
-    
+
     try {
+      // The link already contains the branch ID as query parameter from useEffect
+      // Use it directly since it's already in the correct format
       const response = await axios.post('/qrcodes/generate', {
         web_link: qrcodeLink
       });
-      
+
       if (response.data.success) {
         toast.success('QR code generated successfully');
         setQrcodes([response.data.qrcode, ...qrcodes]);
         setQrcodeLink(`${window.location.origin}/register`); // Reset to default
+        setSelectedQRBranch(''); // Reset branch selection
       }
     } catch (error: any) {
       console.error('Error generating QR code:', error);
@@ -4752,22 +4770,47 @@ export default function Settings() {
                 {/* Generate QR Code Section */}
                 <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200 shadow-sm">
                   <h3 className="text-base sm:text-lg font-semibold mb-4">Generate QR Code</h3>
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+
+                  {/* All controls in single line */}
+                  <div className="flex flex-col lg:flex-row gap-3">
+                    {/* Branch Selection */}
+                    <div className="lg:w-[250px]">
+                      <Label htmlFor="qr-branch" className="text-xs sm:text-sm mb-1 block font-medium">Select Branch</Label>
+                      <Select value={selectedQRBranch} onValueChange={setSelectedQRBranch}>
+                        <SelectTrigger className="w-full h-10">
+                          <SelectValue placeholder="Select a branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allBranchesForDropdown.map((branch) => (
+                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                              {branch.branch_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Link Input */}
                     <div className="flex-1">
-                      <Label htmlFor="qr-link" className="text-xs sm:text-sm mb-2 block font-medium">Enter Link</Label>
+                      <Label htmlFor="qr-link" className="text-xs sm:text-sm mb-1 block font-medium">
+                        Enter Link
+                      </Label>
                       <Input
                         id="qr-link"
-                        placeholder="Enter URL to generate QR code"
+                        placeholder="Link will appear here after branch selection"
                         value={qrcodeLink}
                         onChange={(e) => setQrcodeLink(e.target.value)}
                         className="w-full text-sm h-10"
+                        disabled={!selectedQRBranch}
                       />
                     </div>
+
+                    {/* Generate Button */}
                     <div className="flex items-end">
                       <Button
                         onClick={handleGenerateQRCode}
-                        disabled={generatingQRCode}
-                        className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white text-sm h-10 px-4 sm:px-6"
+                        disabled={generatingQRCode || !selectedQRBranch}
+                        className="bg-purple-600 hover:bg-purple-700 text-white text-sm h-10 px-4 sm:px-6"
                       >
                         {generatingQRCode ? (
                           <>Generating...</>
@@ -4780,6 +4823,15 @@ export default function Settings() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Link Preview */}
+                  {selectedQRBranch && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600">
+                        Preview: <span className="font-medium text-blue-600">{window.location.origin}/register?branch_id={selectedQRBranch}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* QR Codes List */}
@@ -4813,15 +4865,20 @@ export default function Settings() {
                             <div className="space-y-3">
                               {/* Header with QR Code and Link */}
                               <div className="flex items-start gap-3">
-                                {/* QR Code Image */}
+                                {/* QR Code Image - Clickable */}
                                 <div className="flex-shrink-0">
-                                  <div className="h-20 w-20 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-sm p-2 border border-gray-200">
+                                  <a
+                                    href={`/${qrcode.qrcode_file}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block h-20 w-20 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-sm p-2 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                                  >
                                     <img
                                       src={`/${qrcode.qrcode_file}`}
                                       alt="QR Code"
                                       className="h-full w-full object-contain"
                                     />
-                                  </div>
+                                  </a>
                                 </div>
                                 
                                 {/* QR Code Details */}
@@ -4927,13 +4984,18 @@ export default function Settings() {
                               <tr key={qrcode.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="relative group">
-                                    <div className="h-20 w-20 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-md p-2 transition-all duration-200 group-hover:scale-110 group-hover:shadow-lg border border-gray-200">
+                                    <a
+                                      href={`/${qrcode.qrcode_file}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block h-20 w-20 bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg shadow-md p-2 transition-all duration-200 hover:scale-110 hover:shadow-lg border border-gray-200 cursor-pointer"
+                                    >
                                       <img
                                         src={`/${qrcode.qrcode_file}`}
                                         alt="QR Code"
                                         className="h-full w-full object-contain"
                                       />
-                                    </div>
+                                    </a>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4">

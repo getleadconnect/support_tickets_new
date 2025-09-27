@@ -242,6 +242,7 @@ public function getTicketLabels()
             'contact_number' => 'nullable|string|max:20',
             'company_name' => 'nullable|string|max:255',
             'issue' => 'required|string|min:10',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         try {
@@ -267,6 +268,10 @@ public function getTicketLabels()
                 if (!empty($validated['company_name']) && empty($customer->company_name)) {
                     $customer->company_name = $validated['company_name'];
                 }
+                // Update branch_id if provided and customer doesn't have one
+                if (!empty($validated['branch_id']) && empty($customer->branch_id)) {
+                    $customer->branch_id = $validated['branch_id'];
+                }
                 $customer->save();
             } else {
                 // Create new customer
@@ -274,7 +279,7 @@ public function getTicketLabels()
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'company_name' => $validated['company_name'] ?? null,
-                    'branch_id' => auth()->user()->branch_id ?? null,
+                    'branch_id' => $validated['branch_id'] ?? (auth()->user()->branch_id ?? null),
                     'created_by' => 1, // System user
                 ];
 
@@ -315,6 +320,7 @@ public function getTicketLabels()
                 'tracking_number' => $trackingNumber,
                 'slug' => Str::slug($validated['issue'] . '-' . time()),
                 'priority' => 2, // Normal priority
+                'branch_id' => $validated['branch_id'] ?? null, // Add branch_id from registration
                 'status' => 1, // Open status
                 'due_date' => $dueDate,
                 'closed_time' => Carbon::parse('01-01-2025 5:30:00 PM')->format('h:i:s'),

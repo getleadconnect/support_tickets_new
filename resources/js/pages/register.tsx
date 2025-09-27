@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 
 export function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [branchId, setBranchId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -32,6 +34,14 @@ export function Register() {
     email: '',
     issue: ''
   });
+
+  // Get branch_id from URL query parameter
+  useEffect(() => {
+    const branch = searchParams.get('branch_id');
+    if (branch) {
+      setBranchId(branch);
+    }
+  }, [searchParams]);
 
   const validateForm = () => {
     const newErrors = {
@@ -99,7 +109,8 @@ export function Register() {
         email: formData.email.trim(),
         contact_number: formData.mobile ? formData.countryCode + formData.mobile : null,
         company_name: formData.companyName.trim() || null,
-        issue: formData.issue.trim()
+        issue: formData.issue.trim(),
+        branch_id: branchId // Include branch_id from URL
       };
 
       const response = await axios.post('/register-customer', payload);
