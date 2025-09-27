@@ -20,7 +20,8 @@ import {
   CreditCard,
   Sparkles,
   MessageCircle,
-  HelpCircle
+  HelpCircle,
+  Calendar
 } from 'lucide-react';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -91,8 +92,24 @@ const navigationItems: NavItem[] = [
   },
   {
     title: 'Reports',
-    href: '/reports',
     icon: BarChart3,
+    children: [
+      {
+        title: 'General Report',
+        href: '/reports',
+        icon: FileText,
+      },
+      {
+        title: 'Staff Tickets',
+        href: '/staff-tickets-report',
+        icon: Users,
+      },
+      {
+        title: 'Staff Monthly Split-ups',
+        href: '/staff-monthly-splitups',
+        icon: Calendar,
+      },
+    ],
   },
   {
     title: 'Settings',
@@ -113,10 +130,15 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   // Auto-expand Tickets menu if any ticket-related page is active
   const ticketsMenuPaths = ['/tickets', '/verify-tickets', '/closed-tickets', '/deleted-tickets'];
   const isTicketsActive = ticketsMenuPaths.includes(location.pathname);
-  
-  const [expandedItems, setExpandedItems] = useState<string[]>(
-    isTicketsActive ? ['Tickets'] : []
-  );
+
+  // Auto-expand Reports menu if any report-related page is active
+  const reportsMenuPaths = ['/reports', '/staff-tickets-report', '/staff-monthly-splitups'];
+  const isReportsActive = reportsMenuPaths.includes(location.pathname);
+
+  const [expandedItems, setExpandedItems] = useState<string[]>([
+    ...(isTicketsActive ? ['Tickets'] : []),
+    ...(isReportsActive ? ['Reports'] : [])
+  ]);
   
   const toggleExpanded = (title: string) => {
     setExpandedItems(prev => 
@@ -149,9 +171,17 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   // Auto-expand Tickets menu when navigating to ticket-related pages
   useEffect(() => {
     const ticketPaths = ['/tickets', '/verify-tickets', '/closed-tickets', '/deleted-tickets'];
+    const reportPaths = ['/reports', '/staff-tickets-report', '/staff-monthly-splitups'];
+
     if (ticketPaths.includes(location.pathname)) {
       if (!expandedItems.includes('Tickets')) {
         setExpandedItems(prev => [...prev, 'Tickets']);
+      }
+    }
+
+    if (reportPaths.includes(location.pathname)) {
+      if (!expandedItems.includes('Reports')) {
+        setExpandedItems(prev => [...prev, 'Reports']);
       }
     }
   }, [location.pathname]);

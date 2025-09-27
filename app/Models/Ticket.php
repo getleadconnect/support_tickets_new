@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Ticket extends Model
@@ -93,11 +94,16 @@ class Ticket extends Model
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'product_tickets', 'ticket_id', 'product_id')
-            ->withPivot('quantity', 'price', 'total_amount')->withTimestamps();
+            ->withPivot('quantity', 'price', 'total_price')->withTimestamps();
     }
 
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class, 'ticket_id');
     }
 }

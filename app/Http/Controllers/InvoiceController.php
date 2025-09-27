@@ -54,7 +54,12 @@ class InvoiceController extends Controller
         if ($request->has('customer_id') && $request->customer_id && $request->customer_id !== 'all') {
             $query->where('customer_id', $request->customer_id);
         }
-        
+
+        // Status filter
+        if ($request->has('status') && $request->status && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
         // Pagination
         $perPage = $request->get('per_page', 10);
         $invoices = $query->orderBy('id', 'desc')->paginate($perPage);
@@ -290,9 +295,9 @@ class InvoiceController extends Controller
                 ->where('ticket_id', $invoice->ticket_id)
                 ->get();
 
-            // Calculate totals
-            $sparePartsTotal = $spareParts->sum('total_price');
-            $totalAmount = $invoice->item_cost + $invoice->service_charge;
+            // Calculate totals - Only service charge for PDF
+            $sparePartsTotal = 0; // Not showing parts in PDF
+            $totalAmount = $invoice->service_charge; // Only service charge in PDF
 
             // Check if payment exists and get discount
             $payment = DB::table('payments')

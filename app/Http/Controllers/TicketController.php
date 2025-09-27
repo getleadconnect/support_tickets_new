@@ -103,6 +103,13 @@ class TicketController extends Controller
             $query->where('tracking_number', 'like', $prefix . '%');
         }
 
+        // Ticket label filter
+        if ($request->has('label_id') && $request->label_id != null && $request->label_id != 'all') {
+            $query->whereHas('ticketLabel', function($q) use ($request) {
+                $q->where('ticket_labels.id', $request->label_id);
+            });
+        }
+
         // Sorting
         $sortField = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
@@ -127,7 +134,7 @@ class TicketController extends Controller
             'priority' => 'required|numeric',
             'status' => 'required|numeric',
             'due_date' => 'nullable|date',
-            'ticket_type' => 'nullable|string',
+            'ticket_type' => 'required|in:In Shop,On Site',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'service_id' => 'nullable|string',
             'assigned_users' => 'nullable|array',
@@ -149,13 +156,22 @@ class TicketController extends Controller
         // Generate unique tracking number with TKT prefix
         $lastTicket = Ticket::withTrashed()->orderBy('id', 'desc')->first();
         $nextNumber = $lastTicket ? $lastTicket->id + 1 : 1;
-        $validated['tracking_number'] = 'TKT' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);
+        
+        if($request->ticket_type=="In Shop")
+            $validated['tracking_number'] = 'TKT' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);
+        else
+            $validated['tracking_number'] = 'ONS' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);  
         
         // Ensure uniqueness
         while (Ticket::withTrashed()->where('tracking_number', $validated['tracking_number'])->exists()) {
             $nextNumber++;
-            $validated['tracking_number'] = 'TKT' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);
-        }
+
+            if($request->ticket_type=="In Shop")
+                $validated['tracking_number'] = 'TKT' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);
+            else
+                $validated['tracking_number'] = 'ONS' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);  
+
+            }
         
         $validated['slug'] = Str::slug($validated['issue'] . '-' . time());
 
@@ -217,7 +233,7 @@ class TicketController extends Controller
             'due_date' => 'nullable|date',
             'due_time' => 'nullable|string',
             'closed_time' => 'nullable|string',
-            'ticket_type' => 'nullable|string',
+            'ticket_type' => 'nullable|in:In Shop,On Site',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'service_id' => 'nullable|string',
             'branch' => 'nullable|string',
@@ -237,7 +253,14 @@ class TicketController extends Controller
         $originalClosedTime = $ticket->closed_time;
 
         // Update ticket basic info
+
         $ticketData = $validated;
+
+        if($validated['status']==3)
+        {
+            $ticketData['closed_at'] = now();
+        }
+        
         unset($ticketData['assigned_users'], $ticketData['notify_users'], $ticketData['ticket_labels']);
         $ticket->update($ticketData);
 
@@ -245,6 +268,9 @@ class TicketController extends Controller
         if (isset($validated['status']) && $originalStatus != $validated['status']) {
             $oldStatus = $ticket->ticketStatus()->where('id', $originalStatus)->first();
             $newStatus = $ticket->ticketStatus()->where('id', $validated['status'])->first();
+
+            
+                           
             $this->createActivity(
                 $ticket,
                 'Ticket Status Changed',
@@ -1135,8 +1161,9 @@ public function getBranches()
 
 public function getTicketLabels()
 {
-    return response()->json(\App\Models\TicketLabel::select('id', 'label', 'color')
+    return response()->json(\App\Models\TicketLabel::select('id', 'label_name', 'color', 'active')
             ->where('active', 1)
+            ->orderBy('label_name')
             ->get());
 }
 

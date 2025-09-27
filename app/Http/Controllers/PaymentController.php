@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Invoice;
+use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -123,6 +124,14 @@ class PaymentController extends Controller
                 'discount' => $discount,
                 'net_amount' => $netAmount
             ]);
+
+
+            // Update status and closed at in tickets
+            $ticket=Ticket::where('id',$invoice->ticket_id)->update([
+                'status' => 3,
+                'closed_at' => now()
+            ]);
+
 
             DB::commit();
 

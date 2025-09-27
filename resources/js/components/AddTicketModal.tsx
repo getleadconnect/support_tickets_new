@@ -108,6 +108,7 @@ export function AddTicketModal({
     priority: 1, // Default to 'Low'
     due_date: '',
     branch_id: '',
+    ticket_type: 'In Shop', // Default to 'In Shop'
     closed_time: '',
   });
 
@@ -644,33 +645,51 @@ export function AddTicketModal({
             </div>
           </div>
 
-          {/* Branch Dropdown - For Admin users, this filters Assigned To and Notify To */}
-          <div className="grid gap-2">
-            <Label htmlFor="branch">Branch <span className="text-red-500">*</span></Label>
-            <Select
-              value={formData.branch_id?.toString() || ''}
-              onValueChange={(value) => handleFormChange('branch_id', value)}
-            >
-              <SelectTrigger id="branch">
-                <SelectValue placeholder="Select a branch" />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.length === 0 ? (
-                  <SelectItem value="no-branches" disabled>
-                    No branches available
-                  </SelectItem>
-                ) : (
-                  branches.map((branch) => (
-                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                      {branch.branch_name}
+          {/* Branch and Ticket Type - For Admin users, Branch filters Assigned To and Notify To */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="branch">Branch <span className="text-red-500">*</span></Label>
+              <Select
+                value={formData.branch_id?.toString() || ''}
+                onValueChange={(value) => handleFormChange('branch_id', value)}
+              >
+                <SelectTrigger id="branch">
+                  <SelectValue placeholder="Select a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.length === 0 ? (
+                    <SelectItem value="no-branches" disabled>
+                      No branches available
                     </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-            {formData.branch_id && (
-              <p className="text-xs text-gray-500">Users below will be filtered by selected branch</p>
-            )}
+                  ) : (
+                    branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                        {branch.branch_name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              {formData.branch_id && (
+                <p className="text-xs text-gray-500">Filters users below</p>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="ticket_type">Ticket Type <span className="text-red-500">*</span></Label>
+              <Select
+                value={formData.ticket_type || 'In Shop'}
+                onValueChange={(value) => handleFormChange('ticket_type', value)}
+              >
+                <SelectTrigger id="ticket_type">
+                  <SelectValue placeholder="Select ticket type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="In Shop">In Shop</SelectItem>
+                  <SelectItem value="On Site">On Site</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Assigned To and Notify To Dropdowns */}

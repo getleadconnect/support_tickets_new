@@ -48,6 +48,7 @@ export default function Invoices() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [customers, setCustomers] = useState<any[]>([]);
   
   // Payment modal states
@@ -72,7 +73,8 @@ export default function Invoices() {
         search: clearFilters ? '' : searchTerm,
         start_date: clearFilters ? '' : startDate,
         end_date: clearFilters ? '' : endDate,
-        customer_id: clearFilters ? '' : (selectedCustomer === 'all' ? '' : selectedCustomer)
+        customer_id: clearFilters ? '' : (selectedCustomer === 'all' ? '' : selectedCustomer),
+        status: clearFilters ? '' : (selectedStatus === 'all' ? '' : selectedStatus)
       });
 
       const response = await axios.get(`/invoices?${params}`);
@@ -109,6 +111,7 @@ export default function Invoices() {
     setStartDate('');
     setEndDate('');
     setSelectedCustomer('all');
+    setSelectedStatus('all');
     setSearchTerm('');
     setCurrentPage(1);
     fetchInvoices(true); // Pass true to clear filters
@@ -244,7 +247,18 @@ export default function Invoices() {
                 ))}
               </SelectContent>
             </Select>
-            
+
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-[16.66%] min-w-[130px]">
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div className="flex gap-2">
               <Button 
                 onClick={handleFilter}
@@ -254,7 +268,7 @@ export default function Invoices() {
                 Filter
               </Button>
 
-              {(startDate || endDate || (selectedCustomer && selectedCustomer !== 'all')) && (
+              {(startDate || endDate || (selectedCustomer && selectedCustomer !== 'all') || (selectedStatus && selectedStatus !== 'all')) && (
                 <Button 
                   onClick={handleClearFilter}
                   variant="outline"

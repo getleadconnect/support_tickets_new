@@ -174,7 +174,7 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl p-0 overflow-visible">
         <div className="bg-gray-700 text-white px-6 py-4">
           <h2 className="text-lg font-semibold">Assign Agent</h2>
         </div>
@@ -217,7 +217,7 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
               </div>
 
               {dropdownOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg">
+                <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg" style={{ zIndex: 9999 }}>
                   <div className="p-2">
                     <Input
                       placeholder="Search agents..."

@@ -19,6 +19,7 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\StaffReportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MessageSettingController;
 use App\Http\Controllers\QRCodeController;
@@ -146,6 +147,12 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Activity routes
     Route::get('/activities/latest', [ActivityController::class, 'getLatestActivities']);
+
+    // Staff Reports routes
+    Route::get('/reports/staff-tickets', [StaffReportController::class, 'getStaffTicketsReport']);
+    Route::get('/reports/staff-monthly-splitups', [StaffReportController::class, 'getStaffMonthlySplitups']);
+    Route::get('/reports/staff-tickets-excel', [StaffReportController::class, 'generateStaffTicketsExcel']);
+    Route::get('/reports/staff-monthly-splitups-excel', [StaffReportController::class, 'exportMonthlySplitupsExcel']);
     
     // Notification routes
     Route::get('/notifications', [NotificationController::class, 'index']);

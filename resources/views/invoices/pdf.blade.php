@@ -246,10 +246,6 @@ $logo=\App\Models\Company::pluck('logo')->first();
                     <td><strong>Description</strong></td>
                     <td>{{ $invoice->ticket->description ?? 'N/A' }}</td>
                 </tr>
-                <tr>
-                    <td><strong>Total:</strong></td>
-                    <td class="text-right"><strong>{{ number_format($invoice->item_cost, 3) }}</strong></td>
-                </tr>
             </tbody>
         </table>
 
@@ -261,34 +257,10 @@ $logo=\App\Models\Company::pluck('logo')->first();
             </tr>
         </table>
 
-        <!-- Spare Parts Details -->
-        @if($spareParts && count($spareParts) > 0)
-        <div class="section-title">Spare Parts Details:</div>
-        <table class="page-break">
-            <thead>
-                <tr>
-                    <th width="10%">Slno</th>
-                    <th width="50%">Particulars</th>
-                    <th width="10%" class="text-center">Qty</th>
-                    <th width="30%" class="text-right">Rate</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($spareParts as $index => $part)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $part->product->name ?? 'N/A' }}</td>
-                    <td class="text-center">{{ $part->quantity }}</td>
-                    <td class="text-right">{{ number_format($part->total_price, 3) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-        @endif
 
         <!-- Totals -->
         <div class="totals-section">
-            <div class="total-row">Total Amount: {{ number_format($totalAmount, 3) }}</div>
+            <div class="total-row">Service Charge: {{ number_format($invoice->service_charge, 3) }}</div>
             @if($discount > 0)
             <div class="total-row">Discount: {{ number_format($discount, 3) }}</div>
             @endif

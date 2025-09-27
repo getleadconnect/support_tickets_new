@@ -52,9 +52,22 @@ export default function Payments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [totalNetAmount, setTotalNetAmount] = useState(0);
   
-  // Filter states
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // Filter states - Initialize with last 3 months
+  const getInitialDates = () => {
+    const today = new Date();
+    const endDate = today.toISOString().split('T')[0];
+
+    const threeMonthsAgo = new Date(today);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const startDate = threeMonthsAgo.toISOString().split('T')[0];
+
+    return { startDate, endDate };
+  };
+
+  const { startDate: initialStartDate, endDate: initialEndDate } = getInitialDates();
+
+  const [startDate, setStartDate] = useState(initialStartDate);
+  const [endDate, setEndDate] = useState(initialEndDate);
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedPaymentMode, setSelectedPaymentMode] = useState('');
   const [customers, setCustomers] = useState<any[]>([]);
@@ -112,13 +125,16 @@ export default function Payments() {
   };
 
   const handleClearFilter = () => {
-    setStartDate('');
-    setEndDate('');
+    // Reset to last 3 months instead of clearing completely
+    const { startDate: defaultStart, endDate: defaultEnd } = getInitialDates();
+    setStartDate(defaultStart);
+    setEndDate(defaultEnd);
     setSelectedCustomer('all');
     setSelectedPaymentMode('all');
     setSearchTerm('');
     setCurrentPage(1);
-    fetchPayments(true);
+    // Fetch with default date range
+    setTimeout(() => fetchPayments(false), 100);
   };
 
   const getPaymentModeBadge = (mode: string) => {
@@ -142,6 +158,14 @@ export default function Payments() {
 
   const startIndex = (currentPage - 1) * entriesPerPage + 1;
   const endIndex = Math.min(startIndex + payments.length - 1, totalItems);
+
+  // Check if filters are at default (showing last 3 months only)
+  const { startDate: defaultStart, endDate: defaultEnd } = getInitialDates();
+  const isDefaultFilter = startDate === defaultStart &&
+                          endDate === defaultEnd &&
+                          (!selectedCustomer || selectedCustomer === '' || selectedCustomer === 'all') &&
+                          (!selectedPaymentMode || selectedPaymentMode === '' || selectedPaymentMode === 'all') &&
+                          searchTerm === '';
 
   return (
     <DashboardLayout>
@@ -250,6 +274,18 @@ export default function Payments() {
             </div>
           </div>
         </div>
+
+        {/* Default Filter Message */}
+        {isDefaultFilter && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-700 flex items-center">
+              <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"></path>
+              </svg>
+              Showing last 3 months data only. Use filters above to view different date ranges.
+            </p>
+          </div>
+        )}
 
         {/* Table Controls */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-4">

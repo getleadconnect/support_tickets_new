@@ -24,6 +24,8 @@ const Invoices = lazy(() => import('./pages/invoices'));
 const Payments = lazy(() => import('./pages/payments'));
 const Reports = lazy(() => import('./pages/reports'));
 const ReportPreview = lazy(() => import('./pages/report-preview'));
+const StaffTicketsReport = lazy(() => import('./pages/staff-tickets-report'));
+const StaffMonthlySplitups = lazy(() => import('./pages/staff-monthly-splitups'));
 
 // Loading component
 function PageLoader() {
@@ -165,6 +167,20 @@ function App() {
                     <Route path="/reports" element={
                         <ProtectedRoute>
                             <Reports />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/staff-tickets-report" element={
+                        <ProtectedRoute>
+                            <React.Suspense fallback={<div>Loading...</div>}>
+                                <StaffTicketsReport />
+                            </React.Suspense>
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/staff-monthly-splitups" element={
+                        <ProtectedRoute>
+                            <React.Suspense fallback={<div>Loading...</div>}>
+                                <StaffMonthlySplitups />
+                            </React.Suspense>
                         </ProtectedRoute>
                     } />
                     <Route path="/report-preview" element={

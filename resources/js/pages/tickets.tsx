@@ -151,6 +151,9 @@ export default function Tickets() {
   const [filterCustomer, setFilterCustomer] = useState<string>('all');
   const [filterAgent, setFilterAgent] = useState<string>('all');
   const [filterTicketType, setFilterTicketType] = useState<string>('all');
+  const [filterTicketLabel, setFilterTicketLabel] = useState<string>('all');
+  const [ticketLabels, setTicketLabels] = useState<any[]>([]);
+  const [loadingTicketLabels, setLoadingTicketLabels] = useState(false);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [allAgents, setAllAgents] = useState<any[]>([]);
@@ -175,6 +178,7 @@ export default function Tickets() {
     fetchPriorities();
     fetchBranches();
     fetchAgents();
+    fetchTicketLabels();
   }, []);
 
 
@@ -202,6 +206,7 @@ export default function Tickets() {
           start_date: filterStartDate || null,
           end_date: filterEndDate || null,
           ticket_type: filterTicketType !== 'all' ? filterTicketType : null,
+          label_id: filterTicketLabel !== 'all' ? filterTicketLabel : null,
         },
       });
 
@@ -315,6 +320,18 @@ export default function Tickets() {
         { id: 4, status: 'Completed', color_code: '#9810fa' },
         { id: 5, status: 'Returned', color_code: '#c3840b' }
       ]);
+    }
+  };
+
+  const fetchTicketLabels = async () => {
+    setLoadingTicketLabels(true);
+    try {
+      const response = await axios.get('/ticket-labels');
+      setTicketLabels(response.data || []);
+    } catch (err) {
+      console.error('Error fetching ticket labels:', err);
+    } finally {
+      setLoadingTicketLabels(false);
     }
   };
 
@@ -610,6 +627,7 @@ export default function Tickets() {
     setFilterCustomer('all');
     setFilterAgent('all');
     setFilterTicketType('all');
+    setFilterTicketLabel('all');
     setShowCreatedByMe(false);
     setFilteredTickets([]);
     
@@ -772,6 +790,25 @@ export default function Tickets() {
                   </SelectContent>
                 </Select>
 
+                {/* Ticket Label Filter */}
+                <Select value={filterTicketLabel} onValueChange={setFilterTicketLabel}>
+                  <SelectTrigger className="h-9 w-full sm:w-36 lg:w-40 text-sm">
+                    <SelectValue placeholder="All Labels" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Labels</SelectItem>
+                    {loadingTicketLabels ? (
+                      <SelectItem value="loading" disabled>Loading...</SelectItem>
+                    ) : (
+                      ticketLabels.map((label) => (
+                        <SelectItem key={label.id} value={label.id.toString()}>
+                          {label.label_name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+
                 {/* Action Buttons */}
                 <div className="flex gap-2">
                   <Button
@@ -874,6 +911,15 @@ export default function Tickets() {
                       {ticket.customer && (
                         <span className="text-xs text-gray-600 border border-gray-300 rounded px-2 py-1">
                           {ticket.customer.name}
+                        </span>
+                      )}
+                      {ticket.ticket_type && (
+                        <span className={`text-xs border rounded px-2 py-1 ${
+                          ticket.ticket_type === 'On Site'
+                            ? 'bg-purple-100 text-purple-700 border-purple-300'
+                            : 'bg-blue-100 text-blue-700 border-blue-300'
+                        }`}>
+                          {ticket.ticket_type}
                         </span>
                       )}
                       <Select 
@@ -1068,7 +1114,7 @@ export default function Tickets() {
             <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
               Showing {displayTickets.length === 0 ? 0 : ((currentPage - 1) * parseInt(perPage)) + 1} to{' '}
               {Math.min(currentPage * parseInt(perPage), totalItems)} of {totalItems} entries
-              {(filterStartDate || filterEndDate || (filterStatus !== 'all') || (filterCustomer !== 'all') || (filterTicketType !== 'all')) && (
+              {(filterStartDate || filterEndDate || (filterStatus !== 'all') || (filterCustomer !== 'all') || (filterTicketType !== 'all') || (filterTicketLabel !== 'all')) && (
                 <span className="ml-2 text-blue-600">
                   (Filtered: {displayTickets.length} results)
                 </span>
