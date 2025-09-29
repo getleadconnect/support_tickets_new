@@ -346,14 +346,6 @@ export default function StaffMonthlySplitups() {
                                 <td colSpan={5} className="py-2 px-2 text-right" style={{ borderRight: '1px solid #e4e4e4' }}>Parts Subtotal:</td>
                                 <td className="py-2 px-2 text-right">₹{ticket.parts_total.toFixed(2)}</td>
                               </tr>
-                              <tr className="bg-green-50 font-semibold" style={{ borderBottom: '1px solid #e4e4e4' }}>
-                                <td colSpan={5} className="py-2 px-2 text-right" style={{ borderRight: '1px solid #e4e4e4' }}>Service Charge:</td>
-                                <td className="py-2 px-2 text-right text-green-600">₹{ticket.service_charge.toFixed(2)}</td>
-                              </tr>
-                              <tr className="bg-blue-100 font-bold" style={{ borderBottom: '2px solid #e4e4e4' }}>
-                                <td colSpan={5} className="py-2 px-2 text-right" style={{ borderRight: '1px solid #e4e4e4' }}>Grand Total:</td>
-                                <td className="py-2 px-2 text-right text-blue-700">₹{ticket.total_amount.toFixed(2)}</td>
-                              </tr>
                             </tbody>
                           </table>
                         </div>
@@ -367,14 +359,6 @@ export default function StaffMonthlySplitups() {
                               <tr className="bg-gray-50 font-semibold" style={{ borderBottom: '1px solid #e4e4e4' }}>
                                 <td className="py-2 px-2 text-right" style={{ borderRight: '1px solid #e4e4e4' }}>Parts Subtotal:</td>
                                 <td className="py-2 px-2 text-right w-32">₹0.00</td>
-                              </tr>
-                              <tr className="bg-green-50 font-semibold" style={{ borderBottom: '1px solid #e4e4e4' }}>
-                                <td className="py-2 px-2 text-right" style={{ borderRight: '1px solid #e4e4e4' }}>Service Charge:</td>
-                                <td className="py-2 px-2 text-right text-green-600 w-32">₹{ticket.service_charge.toFixed(2)}</td>
-                              </tr>
-                              <tr className="bg-blue-100 font-bold" style={{ borderBottom: '2px solid #e4e4e4' }}>
-                                <td className="py-2 px-2 text-right" style={{ borderRight: '1px solid #e4e4e4' }}>Grand Total:</td>
-                                <td className="py-2 px-2 text-right text-blue-700 w-32">₹{ticket.total_amount.toFixed(2)}</td>
                               </tr>
                             </tbody>
                           </table>
