@@ -171,7 +171,7 @@ export default function StaffMonthlySplitups() {
       <div className="container-fluid px-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-2">
-          <h1 className="text-xl sm:text-2xl font-semibold">Staff Monthly Split-ups</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold">Staff Monthly Split-ups (invoice report)</h1>
           <div className="flex items-center gap-2 text-xs sm:text-sm">
             <Link to="/" className="text-gray-600 hover:text-gray-800">Home</Link>
             <span className="text-gray-400">/</span>
