@@ -573,21 +573,21 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
     }
 
     try {
-      const response = await axios.put(`/tickets/${ticket.id}`, {
+      const response = await axios.put(`/tickets/${ticket.id}/update-issue`, {
         issue: editIssue,
         description: editDescription
       });
-      
+
       toast.success('Ticket updated successfully');
       setShowEditTicket(false);
-      
+
       // Update current ticket data
       setCurrentTicket({
         ...currentTicket,
         issue: editIssue,
         description: editDescription
       });
-      
+
       // Call the parent update function
       onUpdate();
     } catch (error) {

@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tickets/trashed', [TicketController::class, 'trashed']);
     Route::put('/tickets/{ticket}/restore', [TicketController::class, 'restore']);
     Route::put('/tickets/{ticket}/verify', [TicketController::class, 'verifyTicket']);
+    Route::put('/tickets/{ticket}/update-issue', [TicketController::class, 'updateIssueDescription']);
     Route::apiResource('tickets', TicketController::class);
     Route::post('/tickets/{ticket}/agents', [TicketController::class, 'addAgent']);
     Route::delete('/tickets/{ticket}/agents/{agent}', [TicketController::class, 'removeAgent']);

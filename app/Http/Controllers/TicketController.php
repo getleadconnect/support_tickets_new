@@ -220,6 +220,51 @@ class TicketController extends Controller
     }
 
     /**
+     * Update ticket issue and description only.
+     */
+    public function updateIssueDescription(Request $request, Ticket $ticket)
+    {
+        $validated = $request->validate([
+            'issue' => 'required|string|max:255',
+            'description' => 'nullable|string',
+        ]);
+
+        // Store original values for comparison
+        $originalIssue = $ticket->issue;
+        $originalDescription = $ticket->description;
+
+        // Update ticket
+        $ticket->update([
+            'issue' => $validated['issue'],
+            'description' => $validated['description'],
+        ]);
+
+        // Build activity note with changes
+        $changes = [];
+        if ($originalIssue !== $validated['issue']) {
+            $changes[] = "Issue updated";
+        }
+        if ($originalDescription !== $validated['description']) {
+            $changes[] = "Description updated";
+        }
+
+        $noteText = !empty($changes) ? implode(' and ', $changes) : 'Ticket details updated';
+
+        // Log activity
+        Activity::create([
+            'ticket_id' => $ticket->id,
+            'type' => 'Ticket Updated',
+            'note' => $noteText,
+            'created_by' => auth()->id() ?? 1,
+        ]);
+
+        return response()->json([
+            'message' => 'Ticket updated successfully',
+            'ticket' => $ticket->load(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'activity.user', 'activity.status', 'activity.priority'])
+        ]);
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, Ticket $ticket)
@@ -256,11 +301,11 @@ class TicketController extends Controller
 
         $ticketData = $validated;
 
-        if($validated['status']==3)
+        if(isset($validated['status']) && $validated['status']==3)
         {
             $ticketData['closed_at'] = now();
         }
-        
+
         unset($ticketData['assigned_users'], $ticketData['notify_users'], $ticketData['ticket_labels']);
         $ticket->update($ticketData);
 
@@ -289,8 +334,8 @@ class TicketController extends Controller
             $this->createActivity(
                 $ticket,
                 'Ticket Priority Changed',
-                sprintf('Priority changed from %s to %s',
-                    $oldPriority ? $oldPriority->title : 'None',
+                sprintf('Priority changed to %s',
+                    //$oldPriority ? $oldPriority->title : 'None',
                     $newPriority ? $newPriority->title : 'None'
                 ),
                 ['priority_id' => $validated['priority']]
@@ -305,8 +350,8 @@ class TicketController extends Controller
                 $ticket,
                 'Ticket Branch Changed',
                 sprintf('Branch changed from %s to %s',
-                    $oldBranch ? $oldBranch->branch : 'None',
-                    $newBranch ? $newBranch->branch : 'None'
+                    $oldBranch ? $oldBranch->branch_name : 'None',
+                    $newBranch ? $newBranch->branch_name : 'None'
                 ),
                 ['branch_id' => $validated['branch_id']]
             );
