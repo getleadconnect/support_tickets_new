@@ -130,4 +130,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Branch::class)->select('id', 'branch_name');
     }
+
+    public function assignedAgents()
+    {
+        return $this->hasMany(\App\Models\AssignAgent::class, 'user_id');
+    }
 }

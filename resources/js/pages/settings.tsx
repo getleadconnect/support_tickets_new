@@ -39,6 +39,12 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -48,10 +54,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { 
-  Plus, 
-  Search, 
-  Edit, 
+import {
+  Plus,
+  Search,
+  Edit,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -75,7 +81,8 @@ import {
   Eye as EyeIcon,
   EyeOff,
   RefreshCw,
-  MapPin
+  MapPin,
+  UserPlus
 } from 'lucide-react';
 
 interface User {
@@ -96,6 +103,7 @@ interface User {
   branch_id?: number;
   department_id?: number;
   designation_id?: number;
+  assigned_agents_count?: number;
 }
 
 interface Role {
@@ -267,6 +275,21 @@ export default function Settings() {
   });
   const [saving, setSaving] = useState(false);
   const [allBranchesForDropdown, setAllBranchesForDropdown] = useState<any[]>([]);
+
+  // Assign Agents to Manager state
+  const [assignAgentsModalOpen, setAssignAgentsModalOpen] = useState(false);
+  const [selectedManagerForAgents, setSelectedManagerForAgents] = useState<User | null>(null);
+  const [agentUsers, setAgentUsers] = useState<User[]>([]);
+  const [selectedAgents, setSelectedAgents] = useState<number[]>([]);
+  const [assigningAgents, setAssigningAgents] = useState(false);
+
+  // View Assigned Agents state
+  const [viewAssignedAgentsModalOpen, setViewAssignedAgentsModalOpen] = useState(false);
+  const [viewingManagerAgents, setViewingManagerAgents] = useState<User | null>(null);
+  const [assignedAgentsList, setAssignedAgentsList] = useState<any[]>([]);
+  const [loadingAssignedAgents, setLoadingAssignedAgents] = useState(false);
+  const [deleteAgentConfirmOpen, setDeleteAgentConfirmOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<any>(null);
 
   // Role state
   const [roles, setRoles] = useState<Role[]>([]);
@@ -750,6 +773,144 @@ export default function Settings() {
       toast.error('Failed to change password. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Handle assign agents to manager
+  const handleAssignAgents = async (user: User) => {
+    setSelectedManagerForAgents(user);
+    setSelectedAgents([]);
+
+    // Fetch agent users (role_id = 2)
+    try {
+      const response = await fetch('/api/agent-users', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAgentUsers(data);
+      } else {
+        toast.error('Failed to fetch agents');
+      }
+    } catch (err) {
+      console.error('Error fetching agents:', err);
+      toast.error('Failed to fetch agents');
+    }
+
+    setAssignAgentsModalOpen(true);
+  };
+
+  const handleSaveAssignedAgents = async () => {
+    if (!selectedManagerForAgents || selectedAgents.length === 0) {
+      toast.error('Please select at least one agent');
+      return;
+    }
+
+    setAssigningAgents(true);
+    try {
+      const response = await fetch('/api/users/assign-agents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+        body: JSON.stringify({
+          manager_id: selectedManagerForAgents.id,
+          agent_ids: selectedAgents,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.message || 'Failed to assign agents');
+        return;
+      }
+
+      toast.success('Agents assigned successfully');
+      setAssignAgentsModalOpen(false);
+      setSelectedManagerForAgents(null);
+      setSelectedAgents([]);
+
+      // Refresh the users list to update the count
+      fetchUsers();
+    } catch (err) {
+      console.error('Error assigning agents:', err);
+      toast.error('Failed to assign agents. Please try again.');
+    } finally {
+      setAssigningAgents(false);
+    }
+  };
+
+  // Handle view assigned agents
+  const handleViewAssignedAgents = async (user: User) => {
+    setViewingManagerAgents(user);
+    setLoadingAssignedAgents(true);
+    setViewAssignedAgentsModalOpen(true);
+
+    try {
+      const response = await fetch(`/api/users/${user.id}/assigned-agents`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAssignedAgentsList(data);
+      } else {
+        toast.error('Failed to fetch assigned agents');
+      }
+    } catch (err) {
+      console.error('Error fetching assigned agents:', err);
+      toast.error('Failed to fetch assigned agents');
+    } finally {
+      setLoadingAssignedAgents(false);
+    }
+  };
+
+  // Handle remove agent assignment - show confirmation
+  const handleRemoveAgentClick = (agent: any) => {
+    setAgentToDelete(agent);
+    setDeleteAgentConfirmOpen(true);
+  };
+
+  // Confirm and remove agent assignment
+  const confirmRemoveAgent = async () => {
+    if (!viewingManagerAgents || !agentToDelete) return;
+
+    try {
+      const response = await fetch(`/api/users/${viewingManagerAgents.id}/remove-agent/${agentToDelete.agent_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.message || 'Failed to remove agent');
+        return;
+      }
+
+      toast.success('Agent removed successfully');
+
+      // Refresh assigned agents list
+      setAssignedAgentsList(assignedAgentsList.filter(agent => agent.agent_id !== agentToDelete.agent_id));
+
+      // Refresh users list to update count
+      fetchUsers();
+
+      // Close confirmation dialog
+      setDeleteAgentConfirmOpen(false);
+      setAgentToDelete(null);
+    } catch (err) {
+      console.error('Error removing agent:', err);
+      toast.error('Failed to remove agent. Please try again.');
     }
   };
 
@@ -2493,14 +2654,36 @@ export default function Settings() {
                               </span>
                             </TableCell>
                             <TableCell className="py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                (user.role_id || user.role) === 1 ? 'bg-purple-100 text-purple-800' : 
-                                (user.role_id || user.role) === 3 ? 'bg-blue-100 text-blue-800' : 
-                                (user.role_id || user.role) === 4 ? 'bg-orange-100 text-orange-800' :
-                                'bg-green-100 text-green-800'
-                              }`}>
-                                {getRoleName(user.role_id || user.role)}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  (user.role_id || user.role) === 1 ? 'bg-purple-100 text-purple-800' :
+                                  (user.role_id || user.role) === 3 ? 'bg-blue-100 text-blue-800' :
+                                  (user.role_id || user.role) === 4 ? 'bg-orange-100 text-orange-800' :
+                                  'bg-green-100 text-green-800'
+                                }`}>
+                                  {getRoleName(user.role_id || user.role)}
+                                </span>
+                                {(user.role_id || user.role) === 3 && (
+                                  <>
+                                    <button
+                                      className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-colors cursor-pointer"
+                                      onClick={() => handleViewAssignedAgents(user)}
+                                      title="View Assigned Agents"
+                                    >
+                                      {user.assigned_agents_count || 0}
+                                    </button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6"
+                                      onClick={() => handleAssignAgents(user)}
+                                      title="Assign Agents"
+                                    >
+                                      <UserPlus className="h-4 w-4 text-blue-600" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="py-3">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -5673,6 +5856,166 @@ export default function Settings() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Assign Agents to Manager Modal */}
+        <Dialog open={assignAgentsModalOpen} onOpenChange={setAssignAgentsModalOpen}>
+          <DialogContent style={{ width: '500px', maxWidth: '90vw' }}>
+            <DialogHeader>
+              <DialogTitle>Assign Agents to Manager</DialogTitle>
+              <DialogDescription>
+                Select agents to assign to manager "{selectedManagerForAgents?.name}"
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Select Agents (Multiple)</Label>
+                <div className="border rounded-md p-3 max-h-64 overflow-y-auto space-y-2">
+                  {agentUsers.length === 0 ? (
+                    <p className="text-sm text-gray-500">No agents available</p>
+                  ) : (
+                    agentUsers.map((agent) => (
+                      <div key={agent.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`agent-${agent.id}`}
+                          checked={selectedAgents.includes(agent.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedAgents([...selectedAgents, agent.id]);
+                            } else {
+                              setSelectedAgents(selectedAgents.filter(id => id !== agent.id));
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`agent-${agent.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          {agent.name} ({agent.email})
+                        </label>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {selectedAgents.length > 0 && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    {selectedAgents.length} agent(s) selected
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setAssignAgentsModalOpen(false);
+                  setSelectedManagerForAgents(null);
+                  setSelectedAgents([]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveAssignedAgents}
+                disabled={assigningAgents || selectedAgents.length === 0}
+              >
+                {assigningAgents ? 'Assigning...' : 'Assign Agents'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Assigned Agents Modal */}
+        <Dialog open={viewAssignedAgentsModalOpen} onOpenChange={setViewAssignedAgentsModalOpen}>
+          <DialogContent style={{ width: '600px', maxWidth: '90vw' }}>
+            <DialogHeader>
+              <DialogTitle>Assigned Agents</DialogTitle>
+              <DialogDescription>
+                Agents assigned to manager "{viewingManagerAgents?.name}"
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              {loadingAssignedAgents ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                </div>
+              ) : assignedAgentsList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No agents assigned to this manager
+                </div>
+              ) : (
+                <div className="border rounded-md" style={{ borderColor: '#e4e4e4' }}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: '#e4e4e4' }}>
+                        <TableHead className="w-12" style={{ padding: '5px 15px' }}>#</TableHead>
+                        <TableHead style={{ padding: '5px 15px' }}>Agent Name</TableHead>
+                        <TableHead style={{ padding: '5px 15px' }}>Email</TableHead>
+                        <TableHead className="w-24 text-center" style={{ padding: '5px 15px' }}>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assignedAgentsList.map((agent, index) => (
+                        <TableRow key={agent.id} style={{ borderColor: '#e4e4e4' }}>
+                          <TableCell className="font-medium" style={{ padding: '5px 15px' }}>{index + 1}</TableCell>
+                          <TableCell style={{ padding: '5px 15px' }}>{agent.agent?.name || '-'}</TableCell>
+                          <TableCell style={{ padding: '5px 15px' }}>{agent.agent?.email || '-'}</TableCell>
+                          <TableCell className="text-center" style={{ padding: '5px 15px' }}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleRemoveAgentClick(agent)}
+                              title="Remove Agent"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                onClick={() => {
+                  setViewAssignedAgentsModalOpen(false);
+                  setViewingManagerAgents(null);
+                  setAssignedAgentsList([]);
+                }}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Agent Assignment Confirmation */}
+        <AlertDialog open={deleteAgentConfirmOpen} onOpenChange={setDeleteAgentConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Agent Assignment</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove agent "{agentToDelete?.agent?.name}" from manager "{viewingManagerAgents?.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setDeleteAgentConfirmOpen(false);
+                setAgentToDelete(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={confirmRemoveAgent} className="bg-red-600 hover:bg-red-700">
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Add Role Modal */}
         <Dialog open={addRoleModalOpen} onOpenChange={setAddRoleModalOpen}>

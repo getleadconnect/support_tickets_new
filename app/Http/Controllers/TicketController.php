@@ -49,8 +49,24 @@ class TicketController extends Controller
                 });
             }
 
-        } elseif ($user->role_id == 4  or $user->role_id == 3 ) {
-            // Other non-admin users (role_id = 3, 4) see only tickets from their branch
+        } elseif ($user->role_id == 3) {
+            // Manager (role_id = 3) sees tickets assigned to their agents only
+            $assignedAgentIds = \DB::table('assign_agents')
+                ->where('user_id', $user->id)
+                ->pluck('agent_id')
+                ->toArray();
+
+            if (!empty($assignedAgentIds)) {
+                $query->whereHas('agent', function($q) use ($assignedAgentIds) {
+                    $q->whereIn('agent_id', $assignedAgentIds);
+                });
+            } else {
+                // If manager has no assigned agents, show no tickets
+                $query->whereRaw('1 = 0');
+            }
+
+        } elseif ($user->role_id == 4) {
+            // Branch Admin (role_id = 4) sees only tickets from their branch
             if ($user->branch_id) {
                 $query->where('branch_id', $user->branch_id);
             }
@@ -487,7 +503,7 @@ class TicketController extends Controller
         $user = auth()->user();
         $query = Ticket::onlyTrashed()
             ->with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel']);
-        
+
         // Filter tickets based on user role
         if ($user->role_id == 2) {
             // Agents (role_id = 2) see only tickets assigned to them
@@ -498,10 +514,23 @@ class TicketController extends Controller
             if ($user->branch_id) {
                 $query->where('branch_id', $user->branch_id);
             }
-        } elseif ($user->role_id == 2) {
-                $query->where('user_id', $user->id);
-        } elseif ($user->role_id == 4 or $user->role_id==3) {
-            // Other non-admin users (role_id = 3, 4) see only tickets from their branch
+        } elseif ($user->role_id == 3) {
+            // Manager (role_id = 3) sees tickets assigned to their agents only
+            $assignedAgentIds = \DB::table('assign_agents')
+                ->where('user_id', $user->id)
+                ->pluck('agent_id')
+                ->toArray();
+
+            if (!empty($assignedAgentIds)) {
+                $query->whereHas('agent', function($q) use ($assignedAgentIds) {
+                    $q->whereIn('agent_id', $assignedAgentIds);
+                });
+            } else {
+                // If manager has no assigned agents, show no tickets
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($user->role_id == 4) {
+            // Branch Admin (role_id = 4) sees only tickets from their branch
             if ($user->branch_id) {
                 $query->where('branch_id', $user->branch_id);
             }

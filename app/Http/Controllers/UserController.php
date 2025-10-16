@@ -15,20 +15,21 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $loggedInUser = auth()->user();
-        $query = User::with(['department', 'designation', 'branch']);
-        
+        $query = User::with(['department', 'designation', 'branch'])
+            ->withCount(['assignedAgents as assigned_agents_count']);
+
         // Filter users based on logged-in user's role
         if ($loggedInUser->role_id == 4) {
             // Branch Admin (role_id = 4) can only see users where parent_id = their user id
             $query->where('parent_id', $loggedInUser->id);
         }
         // Admin (role_id = 1) can see all users (no filter needed)
-        
+
         // Branch filter
         if ($request->has('branch_id') && $request->branch_id != '') {
             $query->where('branch_id', $request->branch_id);
         }
-        
+
         // Search functionality
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
@@ -37,12 +38,12 @@ class UserController extends Controller
                   ->orWhere('email', 'like', '%' . $search . '%');
             });
         }
-        
+
         // Sorting
         $sortField = $request->get('sort_by', 'created_at');
         $sortOrder = $request->get('sort_order', 'desc');
         $query->orderBy($sortField, $sortOrder);
-        
+
         // Pagination
         $perPage = $request->get('per_page', 10);
         $users = $query->paginate($perPage);
@@ -184,10 +185,131 @@ class UserController extends Controller
      */
     public function getAgentUsers()
     {
-        // Fetch all users (not just agents) for assignment
+        // Fetch only agents (role_id = 2) for assignment
         $users = User::select('id', 'name', 'email', 'branch_id', 'role_id')
+            ->where('role_id', 2)
+            ->where('status', 1) // Only active agents
+            ->orderBy('name')
             ->get();
 
         return response()->json($users);
+    }
+
+    /**
+     * Assign agents to a manager.
+     */
+    public function assignAgentsToManager(Request $request)
+    {
+        $validated = $request->validate([
+            'manager_id' => 'required|exists:users,id',
+            'agent_ids' => 'required|array',
+            'agent_ids.*' => 'exists:users,id',
+        ]);
+
+        $manager = User::find($validated['manager_id']);
+
+        // Check if the user is a manager (role_id = 3)
+        if ($manager->role_id != 3) {
+            return response()->json([
+                'message' => 'Only managers can have agents assigned to them'
+            ], 400);
+        }
+
+        // Get current user (creator)
+        $createdBy = auth()->id();
+
+        // Delete existing assignments for this manager
+        \DB::table('assign_agents')->where('user_id', $validated['manager_id'])->delete();
+
+        // Insert new assignments
+        $assignments = [];
+        foreach ($validated['agent_ids'] as $agentId) {
+            $assignments[] = [
+                'agent_id' => $agentId,
+                'user_id' => $validated['manager_id'],
+                'created_by' => $createdBy,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        \DB::table('assign_agents')->insert($assignments);
+
+        return response()->json([
+            'message' => 'Agents assigned successfully',
+            'manager' => $manager,
+            'assigned_count' => count($validated['agent_ids'])
+        ]);
+    }
+
+    /**
+     * Get assigned agents for a manager.
+     */
+    public function getAssignedAgents(User $user)
+    {
+        // Check if the user is a manager (role_id = 3)
+        if ($user->role_id != 3) {
+            return response()->json([
+                'message' => 'This user is not a manager'
+            ], 400);
+        }
+
+        // Get assigned agents with their details
+        $assignedAgents = \DB::table('assign_agents')
+            ->join('users', 'assign_agents.agent_id', '=', 'users.id')
+            ->where('assign_agents.user_id', $user->id)
+            ->select(
+                'assign_agents.id',
+                'assign_agents.agent_id',
+                'assign_agents.user_id',
+                'assign_agents.created_at',
+                'users.name as agent_name',
+                'users.email as agent_email'
+            )
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'agent_id' => $item->agent_id,
+                    'user_id' => $item->user_id,
+                    'created_at' => $item->created_at,
+                    'agent' => [
+                        'id' => $item->agent_id,
+                        'name' => $item->agent_name,
+                        'email' => $item->agent_email,
+                    ]
+                ];
+            });
+
+        return response()->json($assignedAgents);
+    }
+
+    /**
+     * Remove agent assignment from a manager.
+     */
+    public function removeAgentAssignment(User $user, $agentId)
+    {
+        // Check if the user is a manager (role_id = 3)
+        if ($user->role_id != 3) {
+            return response()->json([
+                'message' => 'This user is not a manager'
+            ], 400);
+        }
+
+        // Delete the assignment
+        $deleted = \DB::table('assign_agents')
+            ->where('user_id', $user->id)
+            ->where('agent_id', $agentId)
+            ->delete();
+
+        if (!$deleted) {
+            return response()->json([
+                'message' => 'Agent assignment not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Agent removed successfully'
+        ]);
     }
 }

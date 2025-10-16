@@ -139,9 +139,14 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // User routes
     Route::apiResource('users', UserController::class);
-    
+
     // Agent users route (role_id = 2)
     Route::get('/agent-users', [UserController::class, 'getAgentUsers']);
+
+    // Assign agents to manager routes
+    Route::post('/users/assign-agents', [UserController::class, 'assignAgentsToManager']);
+    Route::get('/users/{user}/assigned-agents', [UserController::class, 'getAssignedAgents']);
+    Route::delete('/users/{user}/remove-agent/{agent}', [UserController::class, 'removeAgentAssignment']);
     
     // Role routes
     Route::apiResource('roles', RoleController::class);
