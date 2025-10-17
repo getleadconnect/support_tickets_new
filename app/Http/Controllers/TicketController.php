@@ -478,21 +478,23 @@ class TicketController extends Controller
      */
     public function destroy(Ticket $ticket)
     {
-        $user_id=Auth::user()->id;
-        if($ticket->created_by===$user_id or Auth::user()->role_id===1)
-            {        
-                $ticket->delete();
-                return response()->json([
-                        'message' => 'Ticket deleted successfully'
-                    ]);
+        $user = Auth::user();
 
-            }
-            else
-            {
-                    return response()->json([
-                            'message' => "Can't remove this ticket."
-                        ]);
-            }
+        // Check authorization: Admin, Manager, or ticket creator can delete
+        if($ticket->created_by === $user->id || $user->role_id === 1 || $user->role_id === 3)
+        {
+            $ticket->delete();
+
+            return response()->json([
+                'message' => 'Ticket deleted successfully'
+            ], 200);
+        }
+        else
+        {
+            return response()->json([
+                'message' => "You don't have permission to delete this ticket."
+            ], 403);
+        }
     }
     
     /**
