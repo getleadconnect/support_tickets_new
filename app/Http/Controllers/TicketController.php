@@ -1367,7 +1367,7 @@ public function getTicketLabels()
     }
 
 
-//for app only
+//for app only-----------------------------------------------------------------------------
 
 public function getDashboardStats(Request $request)
 {
@@ -1386,6 +1386,7 @@ public function getDashboardStats(Request $request)
                         ->count(); //due tickets
         $data['ticketsProgress'] = Ticket::where('status',2)->count();
         $data['totalCustomers'] = Customer::count(); //due tickets
+        $data['chartData'] = $this->getMonthlyTicketData(); 
     }
     elseif ($user->role_id==3)  //agent data counts
     {
@@ -1410,6 +1411,7 @@ public function getDashboardStats(Request $request)
         $data['ticketsOverdue'] = $tot_due;
         $data['ticketsProgress'] = $tot_progress;
         $data['totalCustomers'] = Customer::count(); //due tickets
+        $data['chartData'] = $this->getMonthlyTicketData(); 
     }
 
     return response()->json(['stats' => $data ], 200);
@@ -1417,10 +1419,52 @@ public function getDashboardStats(Request $request)
 }
 
 
+private function getMonthlyTicketData()
+    {
+        $data = [];
+        $currentDate = \Carbon\Carbon::now();
+        
+        for ($i = 11; $i >= 0; $i--) {
+            $date = $currentDate->copy()->subMonths($i);
+            $monthName = $date->format('M');
+            
+            // Get ticket count for this month
+            $ticketCount = Ticket::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month)
+                ->count();
+            
+            // Calculate trend (simple moving average)
+            $trend = $this->calculateTrend($date);
+            
+            $data[] = [
+                'month' => $monthName,
+                'tickets' => $ticketCount,
+                'trend' => $trend
+            ];
+        }
+        
+        return $data;
+    }
+    
+    private function calculateTrend($date)
+    {
+        // Simple 3-month moving average for trend
+        $sum = 0;
+        $count = 0;
+        
+        for ($i = 0; $i < 3; $i++) {
+            $monthDate = $date->copy()->subMonths($i);
+            $tickets = Ticket::whereYear('created_at', $monthDate->year)
+                ->whereMonth('created_at', $monthDate->month)
+                ->count();
+            $sum += $tickets;
+            $count++;
+        }
+        
+        return $count > 0 ? round($sum / $count) : 0;
+    }
 
-
-
-
+//-----------------------------------------------------------------------------------------------
 
 
 
