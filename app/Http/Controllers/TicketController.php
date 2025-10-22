@@ -15,6 +15,7 @@ use App\Models\AgentTask;
 use App\Models\Product;
 use App\Models\ProductTicket;
 use App\Models\Notification;
+use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
 use Auth;
 
@@ -695,8 +696,9 @@ class TicketController extends Controller
     }
 
     /**
-     * Remove a label from a ticket
+     * Add a label to a ticket
      */
+
     public function addLabel(Request $request, Ticket $ticket)
     {
         try {
@@ -707,13 +709,13 @@ class TicketController extends Controller
             // Check if label is already attached
             $exists = DB::table('label_ticket')
                 ->where('ticket_id', $ticket->id)
-                ->where('ticket_label_id', $validated['label_id'])
+                ->where('label_id', $validated['label_id'])
                 ->exists();
 
             if (!$exists) {
                 DB::table('label_ticket')->insert([
                     'ticket_id' => $ticket->id,
-                    'ticket_label_id' => $validated['label_id'],
+                    'label_id' => $validated['label_id'],
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
@@ -724,6 +726,10 @@ class TicketController extends Controller
             return response()->json(['message' => 'Failed to add label'], 500);
         }
     }
+
+    /**
+     * Remove a label from a ticket
+     */
 
     public function removeLabel(Ticket $ticket, $labelId)
     {
@@ -1361,8 +1367,54 @@ public function getTicketLabels()
     }
 
 
+//for app only
 
+public function getDashboardStats(Request $request)
+{
 
+    $user = auth()->user();
+    
+    $data=['totalTickets' => 0,'ticketsOpen' => 0,'ticketsOverdue'=> 0,'ticketProgress'=>0,'totalCustomers' => 0];
+
+    if($user->role_id==1)
+    {
+        $data['totalTickets'] = Ticket::count();
+
+        $data['ticketsOpen'] = Ticket::where('status',1)->count(); //open tickets
+        $data['ticketsOverdue'] = $overdueTickets = Ticket::where('status', '!=', 3)
+                        ->where('due_date', '<', now())
+                        ->count(); //due tickets
+        $data['ticketsProgress'] = Ticket::where('status',2)->count();
+        $data['totalCustomers'] = Customer::count(); //due tickets
+    }
+    elseif ($user->role_id==3)  //agent data counts
+    {
+        $tickets = Ticket::leftJoin('agent_ticket','tickets.id','agent_ticket.ticket_id')
+                   ->leftJoin('assign_agents','agent_ticket.agent_id','assign_agents.agent_id')
+                   ->where('assign_agents.user_id',$user->id)->get();
+
+        $tot_open=$tot_progress=$tot_due=0;
+
+        foreach($tickets as $tkt)
+        {
+            if($tkt->status==1)
+                $tot_open++;
+            elseif($tkt->status!=3)
+                $tot_progress++;
+            if(($tkt->status!=3) and ($tkt->due_date<date('Y-m-d')))
+                $tot_due++;
+        }
+
+        $data['totalTickets']=$tickets->count();
+        $data['ticketsOpen'] = $tot_open;
+        $data['ticketsOverdue'] = $tot_due;
+        $data['ticketsProgress'] = $tot_progress;
+        $data['totalCustomers'] = Customer::count(); //due tickets
+    }
+
+    return response()->json(['stats' => $data ], 200);
+
+}
 
 
 

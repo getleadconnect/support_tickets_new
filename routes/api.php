@@ -51,6 +51,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/tickets/{ticket}/notify/{user}', [TicketController::class, 'removeNotifyUser']);
     Route::post('/tickets/{ticket}/labels', [TicketController::class, 'addLabel']);
     Route::delete('/tickets/{ticket}/labels/{label}', [TicketController::class, 'removeLabel']);
+
+    Route::get('/dashboard-stats', [TicketController::class, 'getDashboardStats']); //for app only
     
     // Ticket Log Note routes
     Route::get('/tickets/{ticket}/log-notes', [TicketController::class, 'getLogNotes']);
