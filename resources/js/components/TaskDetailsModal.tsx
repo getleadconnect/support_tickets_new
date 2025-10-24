@@ -98,6 +98,11 @@ interface TaskNote {
   };
 }
 
+interface TaskStatus {
+  id: number;
+  status: string;
+}
+
 interface TaskDetailsModalProps {
   open: boolean;
   onClose: () => void;
@@ -108,6 +113,7 @@ interface TaskDetailsModalProps {
 export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDetailsModalProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [notes, setNotes] = useState<TaskNote[]>([]);
+  const [taskStatuses, setTaskStatuses] = useState<TaskStatus[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [addNoteModalOpen, setAddNoteModalOpen] = useState(false);
@@ -146,11 +152,13 @@ export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDeta
 
     switch (statusNum) {
       case 1:
-        return { label: 'Open', color: 'bg-blue-100 text-blue-700' };
+        return { label: 'open', color: 'bg-blue-100 text-blue-700' };
       case 2:
-        return { label: 'Pending', color: 'bg-yellow-100 text-yellow-700' };
+        return { label: 'pending', color: 'bg-yellow-100 text-yellow-700' };
       case 3:
-        return { label: 'Closed', color: 'bg-green-100 text-green-700' };
+        return { label: 'In Progress', color: 'bg-purple-100 text-purple-700' };
+      case 4:
+        return { label: 'closed', color: 'bg-green-100 text-green-700' };
       default:
         return { label: 'Unknown', color: 'bg-gray-100 text-gray-700' };
     }
@@ -233,11 +241,22 @@ export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDeta
     }
   };
 
+  // Fetch task statuses
+  const fetchTaskStatuses = async () => {
+    try {
+      const response = await axios.get('/task-statuses');
+      setTaskStatuses(response.data || []);
+    } catch (error) {
+      console.error('Error fetching task statuses:', error);
+    }
+  };
+
   useEffect(() => {
     if (open && task.id) {
       setCurrentTask(task);
       fetchActivities();
       fetchNotes();
+      fetchTaskStatuses();
     }
   }, [open, task.id]);
 
@@ -468,9 +487,11 @@ export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDeta
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">Open</SelectItem>
-                <SelectItem value="2">Pending</SelectItem>
-                <SelectItem value="3">Closed</SelectItem>
+                {taskStatuses.map((status) => (
+                  <SelectItem key={status.id} value={status.id.toString()}>
+                    {status.status}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

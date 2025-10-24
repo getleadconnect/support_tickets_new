@@ -81,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('tasks', TaskController::class);
     Route::get('/task-types', [TaskController::class, 'getTaskTypes']);
     Route::get('/task-categories', [TaskController::class, 'getTaskCategories']);
+    Route::get('/task-statuses', [TaskController::class, 'getTaskStatuses']);
     Route::get('/task-agents', [TaskController::class, 'getAgents']);
     Route::get('/task-ticket/{trackingNumber}', [TaskController::class, 'getTicketByTrackingNumber']);
     Route::get('/tasks/{id}/activities', [TaskController::class, 'getTaskActivities']);

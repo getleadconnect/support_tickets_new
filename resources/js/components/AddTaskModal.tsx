@@ -40,6 +40,11 @@ interface TaskCategory {
   category: string;
 }
 
+interface TaskStatus {
+  id: number;
+  status: string;
+}
+
 interface Agent {
   id: number;
   name: string;
@@ -75,6 +80,7 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [taskCategories, setTaskCategories] = useState<TaskCategory[]>([]);
+  const [taskStatuses, setTaskStatuses] = useState<TaskStatus[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<number[]>([]);
   const [showAgentsDropdown, setShowAgentsDropdown] = useState(false);
@@ -144,14 +150,16 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
 
   const fetchReferenceData = async () => {
     try {
-      const [ticketsRes, categoriesRes, agentsRes] = await Promise.all([
+      const [ticketsRes, categoriesRes, statusesRes, agentsRes] = await Promise.all([
         axios.get('/tickets'),
         axios.get('/task-categories'),
+        axios.get('/task-statuses'),
         axios.get('/task-agents'),
       ]);
 
       setTickets(ticketsRes.data.data || ticketsRes.data || []);
       setTaskCategories(categoriesRes.data || []);
+      setTaskStatuses(statusesRes.data || []);
       setAgents(agentsRes.data || []);
     } catch (error) {
       console.error('Error fetching reference data:', error);
@@ -211,7 +219,7 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
         description: formData.description,
         status: formData.status,
         agent_ids: selectedAgents,
-        ...(task && formData.status === '3' && { closing_comment: formData.closing_comment })
+        ...(formData.status === '4' && formData.closing_comment && { closing_comment: formData.closing_comment })
       };
 
       if (task) {
@@ -319,9 +327,11 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Open</SelectItem>
-                    <SelectItem value="2">Pending</SelectItem>
-                    <SelectItem value="3">Closed</SelectItem>
+                    {taskStatuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id.toString()}>
+                        {status.status}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -423,8 +433,8 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
               />
             </div>
 
-            {/* Closing Comment (only show when status is closed and editing) */}
-            {task && formData.status === '3' && (
+            {/* Closing Comment (only show when status is closed) */}
+            {formData.status === '4' && (
               <div>
                 <Label htmlFor="closing_comment">Closing Comment</Label>
                 <Textarea

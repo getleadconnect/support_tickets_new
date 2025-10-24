@@ -46,4 +46,9 @@ class Task extends Model
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
+
+    public function taskStatus()
+    {
+        return $this->belongsTo(TaskStatus::class, 'status', 'id');
+    }
 }

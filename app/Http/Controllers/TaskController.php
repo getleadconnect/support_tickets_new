@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use App\Models\TaskType;
 use App\Models\TaskCategory;
+use App\Models\TaskStatus;
 use App\Models\User;
 use App\Models\Activity;
 use App\Models\TaskNotes;
@@ -19,7 +20,7 @@ class TaskController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Task::with(['user', 'ticket', 'type', 'category', 'agent', 'branch']);
+        $query = Task::with(['user', 'ticket', 'type', 'category', 'agent', 'branch', 'taskStatus']);
 
         // Filter by date range (using time column which is the due date)
         if ($request->has('start_date') && $request->start_date) {
@@ -117,6 +118,7 @@ class TaskController extends Controller
             'status' => 'nullable|string',
             'agent_ids' => 'nullable|array',
             'agent_ids.*' => 'exists:users,id',
+            'closing_comment' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -132,7 +134,7 @@ class TaskController extends Controller
             // Get logged user's branch_id
             $branchId = auth()->user()->branch_id ?? null;
 
-            $task = Task::create([
+            $taskData = [
                 'task_name' => $request->task_name,
                 'user_id' => auth()->id(),
                 'ticket_id' => $request->ticket_id,
@@ -142,11 +144,30 @@ class TaskController extends Controller
                 'description' => $request->description,
                 'status' => $request->status ?? '1',
                 'branch_id' => $branchId,
-            ]);
+            ];
+
+            // If status is closed (4), add closing details
+            if ($request->status == '4') {
+                $taskData['closing_comment'] = $request->closing_comment;
+                $taskData['closed_time'] = now();
+                $taskData['closed_by'] = auth()->id();
+            }
+
+            $task = Task::create($taskData);
 
             // Attach agents if provided
             if ($request->has('agent_ids') && is_array($request->agent_ids)) {
                 $task->agent()->attach($request->agent_ids);
+            }
+
+            // If closing comment is provided and status is closed, add it to task_notes table
+            if ($request->status == '4' && $request->has('closing_comment') && !empty($request->closing_comment)) {
+                TaskNotes::create([
+                    'task_id' => $task->id,
+                    'task_status' => 4,
+                    'comment' => $request->closing_comment,
+                    'created_by' => auth()->id(),
+                ]);
             }
 
             // Log activity
@@ -161,7 +182,7 @@ class TaskController extends Controller
             DB::commit();
 
             // Load relationships
-            $task->load(['user', 'ticket', 'type', 'category', 'agent', 'branch']);
+            $task->load(['user', 'ticket', 'type', 'category', 'agent', 'branch', 'taskStatus']);
 
             return response()->json([
                 'message' => 'Task created successfully',
@@ -182,7 +203,7 @@ class TaskController extends Controller
      */
     public function show($id)
     {
-        $task = Task::with(['user', 'ticket', 'type', 'category', 'agent', 'branch'])
+        $task = Task::with(['user', 'ticket', 'type', 'category', 'agent', 'branch', 'taskStatus'])
             ->find($id);
 
         if (!$task) {
@@ -287,12 +308,12 @@ class TaskController extends Controller
 
             // Track status change
             if ($request->has('status') && $originalStatus != $request->status) {
-                $statusLabels = ['1' => 'Open', '2' => 'Pending', '3' => 'Closed'];
+                $statusLabels = ['1' => 'open', '2' => 'pending', '3' => 'In Progress', '4' => 'closed'];
                 $changes[] = 'status changed from ' . ($statusLabels[$originalStatus] ?? 'Unknown') . ' to ' . ($statusLabels[$request->status] ?? 'Unknown');
             }
 
-            // If status is being set to closed (3), record closure details
-            if ($request->has('status') && $request->status == '3') {
+            // If status is being set to closed (4), record closure details
+            if ($request->has('status') && $request->status == '4') {
                 $task->update([
                     'closed_time' => now(),
                     'closed_by' => auth()->id(),
@@ -302,7 +323,7 @@ class TaskController extends Controller
                 if ($request->has('closing_comment') && !empty($request->closing_comment)) {
                     TaskNotes::create([
                         'task_id' => $task->id,
-                        'task_status' => 3, // Closed status
+                        'task_status' => 4, // Closed status
                         'comment' => $request->closing_comment,
                         'created_by' => auth()->id(),
                     ]);
@@ -328,7 +349,7 @@ class TaskController extends Controller
             DB::commit();
 
             // Load relationships
-            $task->load(['user', 'ticket', 'type', 'category', 'agent']);
+            $task->load(['user', 'ticket', 'type', 'category', 'agent', 'taskStatus']);
 
             return response()->json([
                 'message' => 'Task updated successfully',
@@ -417,6 +438,15 @@ class TaskController extends Controller
     }
 
     /**
+     * Get all task statuses
+     */
+    public function getTaskStatuses()
+    {
+        $taskStatuses = TaskStatus::orderBy('id')->get();
+        return response()->json($taskStatuses);
+    }
+
+    /**
      * Get all agents (users with role_id = 2)
      */
     public function getAgents()
@@ -491,7 +521,7 @@ class TaskController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'comment' => 'required|string',
-            'task_status' => 'required|integer|in:1,2,3',
+            'task_status' => 'required|integer|in:1,2,3,4',
         ]);
 
         if ($validator->fails()) {
@@ -520,8 +550,8 @@ class TaskController extends Controller
                 'status' => $request->task_status
             ]);
 
-            // If status is being set to closed (3), record closure details
-            if ($request->task_status == 3 && $oldStatus != 3) {
+            // If status is being set to closed (4), record closure details
+            if ($request->task_status == 4 && $oldStatus != 4) {
                 $task->update([
                     'closed_time' => now(),
                     'closed_by' => auth()->id(),
@@ -554,7 +584,7 @@ class TaskController extends Controller
 
             // Log activity if status changed
             if ($oldStatus != $request->task_status) {
-                $statusLabels = ['1' => 'Open', '2' => 'Pending', '3' => 'Closed'];
+                $statusLabels = ['1' => 'open', '2' => 'pending', '3' => 'In Progress', '4' => 'closed'];
                 Activity::create([
                     'task_id' => $task->id,
                     'ticket_id' => $task->ticket_id,
@@ -567,7 +597,7 @@ class TaskController extends Controller
             DB::commit();
 
             // Load task relationships
-            $task->load(['user', 'ticket', 'type', 'category', 'agent']);
+            $task->load(['user', 'ticket', 'type', 'category', 'agent', 'taskStatus']);
 
             return response()->json([
                 'message' => 'Note added successfully',

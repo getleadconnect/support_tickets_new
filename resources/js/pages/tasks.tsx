@@ -110,6 +110,10 @@ interface Task {
     id: number;
     branch_name: string;
   };
+  task_status?: {
+    id: number;
+    status: string;
+  };
 }
 
 interface TaskType {
@@ -120,6 +124,11 @@ interface TaskType {
 interface TaskCategory {
   id: number;
   category: string;
+}
+
+interface TaskStatus {
+  id: number;
+  status: string;
 }
 
 interface Agent {
@@ -151,6 +160,7 @@ export default function Tasks() {
   // Reference data
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [taskCategories, setTaskCategories] = useState<TaskCategory[]>([]);
+  const [taskStatuses, setTaskStatuses] = useState<TaskStatus[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
 
   // Modals
@@ -203,14 +213,16 @@ export default function Tasks() {
   // Fetch reference data
   const fetchReferenceData = async () => {
     try {
-      const [typesRes, categoriesRes, agentsRes] = await Promise.all([
+      const [typesRes, categoriesRes, statusesRes, agentsRes] = await Promise.all([
         axios.get('/task-types'),
         axios.get('/task-categories'),
+        axios.get('/task-statuses'),
         axios.get('/task-agents'),
       ]);
 
       setTaskTypes(typesRes.data || []);
       setTaskCategories(categoriesRes.data || []);
+      setTaskStatuses(statusesRes.data || []);
       setAgents(agentsRes.data || []);
     } catch (err) {
       console.error('Error fetching reference data:', err);
@@ -305,20 +317,29 @@ export default function Tasks() {
     }
   };
 
-  // Get status display info (numeric status: 1=Open, 2=Pending, 3=Closed)
-  const getStatusDisplay = (status: string | number | null) => {
-    const statusNum = typeof status === 'string' ? parseInt(status) : status;
+  // Get status display info from task_status relationship
+  const getStatusDisplay = (task: Task) => {
+    const statusLabel = task.task_status?.status || 'Unknown';
+    const statusNum = typeof task.status === 'string' ? parseInt(task.status) : task.status;
 
+    // Determine color based on status id
+    let color = 'bg-gray-100 text-gray-700 border border-gray-300';
     switch (statusNum) {
       case 1:
-        return { label: 'Open', color: 'bg-blue-100 text-blue-700 border border-blue-300' };
+        color = 'bg-blue-100 text-blue-700 border border-blue-300';
+        break;
       case 2:
-        return { label: 'Pending', color: 'bg-yellow-100 text-yellow-700 border border-yellow-300' };
+        color = 'bg-yellow-100 text-yellow-700 border border-yellow-300';
+        break;
       case 3:
-        return { label: 'Closed', color: 'bg-green-100 text-green-700 border border-green-300' };
-      default:
-        return { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border border-gray-300' };
+        color = 'bg-purple-100 text-purple-700 border border-purple-300';
+        break;
+      case 4:
+        color = 'bg-green-100 text-green-700 border border-green-300';
+        break;
     }
+
+    return { label: statusLabel, color };
   };
 
   // Format date
@@ -352,9 +373,10 @@ export default function Tasks() {
   const totalTasks = totalItems;
   const openTasks = tasks.filter(task => task.status === '1' || task.status === 1).length;
   const pendingTasks = tasks.filter(task => task.status === '2' || task.status === 2).length;
-  const closedTasks = tasks.filter(task => task.status === '3' || task.status === 3).length;
+  const inProgressTasks = tasks.filter(task => task.status === '3' || task.status === 3).length;
+  const closedTasks = tasks.filter(task => task.status === '4' || task.status === 4).length;
   const overdueTasks = tasks.filter(task => {
-    const isNotClosed = task.status !== '3' && task.status !== 3;
+    const isNotClosed = task.status !== '4' && task.status !== 4;
     const isPastDue = new Date(task.time) < new Date();
     return isNotClosed && isPastDue;
   }).length;
@@ -375,7 +397,7 @@ export default function Tasks() {
         </div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Total Tasks */}
           <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
             <div className="flex items-center justify-between">
@@ -411,6 +433,19 @@ export default function Tasks() {
               </div>
               <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
                 <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </div>
+
+          {/* In Progress Tasks */}
+          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-3xl font-bold text-purple-600 mt-2">{inProgressTasks}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <ListTodo className="w-6 h-6 text-purple-600" />
               </div>
             </div>
           </div>
@@ -489,19 +524,19 @@ export default function Tasks() {
               </SelectContent>
             </Select>
 
-            {/* Task Type */}
+            {/* Task Status */}
             <Select value={String(filterTaskType)} onValueChange={(value) => {
               setFilterTaskType(value);
               setCurrentPage(1);
             }}>
               <SelectTrigger className="w-52">
-                <SelectValue placeholder="Select Task Type" />
+                <SelectValue placeholder="Select Task Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Type</SelectItem>
-                {taskTypes.map((type) => (
-                  <SelectItem key={type.id} value={String(type.id)}>
-                    {String(type.type)}
+                <SelectItem value="all">All Status</SelectItem>
+                  {taskStatuses.map((status) => (
+                  <SelectItem key={status.id} value={String(status.id)}>
+                    {String(status.status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -664,7 +699,7 @@ export default function Tasks() {
                         </TableCell>
                         <TableCell className="border-r" style={{ borderColor: '#e4e4e4' }}>
                           {(() => {
-                            const { label, color } = getStatusDisplay(task.status);
+                            const { label, color } = getStatusDisplay(task);
                             const statusBadge = (
                               <span className={`inline-flex items-center ${color} px-3 py-1 rounded text-xs font-semibold cursor-help`}>
                                 {String(label)}
