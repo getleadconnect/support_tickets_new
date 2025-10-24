@@ -17,6 +17,7 @@ const ClosedTickets = lazy(() => import('./pages/closed-tickets'));
 const DeletedTickets = lazy(() => import('./pages/deleted-tickets'));
 const Customers = lazy(() => import('./pages/customers'));
 const CustomerDetails = lazy(() => import('./pages/customer-details'));
+const Tasks = lazy(() => import('./pages/tasks'));
 const Settings = lazy(() => import('./pages/settings'));
 const HelpSupport = lazy(() => import('./pages/help-support'));
 const Products = lazy(() => import('./pages/products'));
@@ -135,6 +136,11 @@ function App() {
                     <Route path="/customers/:id" element={
                         <ProtectedRoute>
                             <CustomerDetails />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/tasks" element={
+                        <ProtectedRoute>
+                            <Tasks />
                         </ProtectedRoute>
                     } />
                     <Route path="/products" element={

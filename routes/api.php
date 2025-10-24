@@ -23,6 +23,7 @@ use App\Http\Controllers\StaffReportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MessageSettingController;
 use App\Http\Controllers\QRCodeController;
+use App\Http\Controllers\TaskController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -75,7 +76,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // Ticket Additional Fields routes
     Route::get('/tickets/{ticket}/additional-fields', [TicketController::class, 'getAdditionalFields']);
     Route::post('/tickets/{ticket}/additional-fields', [TicketController::class, 'storeAdditionalField']);
-    
+
+    // Task Management routes
+    Route::apiResource('tasks', TaskController::class);
+    Route::get('/task-types', [TaskController::class, 'getTaskTypes']);
+    Route::get('/task-categories', [TaskController::class, 'getTaskCategories']);
+    Route::get('/task-agents', [TaskController::class, 'getAgents']);
+    Route::get('/task-ticket/{trackingNumber}', [TaskController::class, 'getTicketByTrackingNumber']);
+    Route::get('/tasks/{id}/activities', [TaskController::class, 'getTaskActivities']);
+    Route::get('/tasks/{id}/notes', [TaskController::class, 'getTaskNotes']);
+    Route::post('/tasks/{id}/notes', [TaskController::class, 'addTaskNote']);
+
     // Customer routes
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::post('/customers', [CustomerController::class, 'store']);

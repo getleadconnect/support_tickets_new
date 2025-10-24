@@ -21,7 +21,8 @@ import {
   Sparkles,
   MessageCircle,
   HelpCircle,
-  Calendar
+  Calendar,
+  ListTodo
 } from 'lucide-react';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -74,6 +75,11 @@ const navigationItems: NavItem[] = [
     title: 'Customers',
     href: '/customers',
     icon: Users,
+  },
+  {
+    title: 'Tasks',
+    href: '/tasks',
+    icon: ListTodo,
   },
   {
     title: 'Products',
@@ -208,9 +214,9 @@ export function Sidebar({ className, ...props }: SidebarProps) {
         <div className="flex-1 overflow-y-auto px-3 py-4">
           <nav className="space-y-1">
             {navigationItems.filter((item) => {
-              // For agents (role_id = 2), only show Dashboard and Tickets
+              // For agents (role_id = 2), only show Dashboard, Tickets, and Tasks
               if (currentUser && currentUser.role_id === 2) {
-                return item.title === 'Dashboard' || item.title === 'Tickets';
+                return item.title === 'Dashboard' || item.title === 'Tickets' || item.title === 'Tasks';
               }
               // Hide Settings menu for role_id=3 (Manager)
               if (item.title === 'Settings' && currentUser && currentUser.role_id === 3) {

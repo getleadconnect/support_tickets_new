@@ -29,7 +29,7 @@ class Task extends Model
 
     public function ticket()
     {
-        return $this->belongsTo(Ticket::class);
+        return $this->belongsTo(Ticket::class)->withTrashed();
     }
 
     public function type()
@@ -40,5 +40,10 @@ class Task extends Model
     public function category()
     {
         return $this->belongsTo(TaskCategory::class, 'category_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 }
