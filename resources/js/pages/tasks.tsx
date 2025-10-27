@@ -383,104 +383,104 @@ export default function Tasks() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 p-2 sm:p-4 md:p-0">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
-            <p className="text-gray-500 mt-1">Manage and track all tasks</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Tasks</h1>
+            <p className="text-sm sm:text-base text-gray-500 mt-1">Manage and track all tasks</p>
           </div>
-          <Button onClick={() => setAddModalOpen(true)}>
+          <Button onClick={() => setAddModalOpen(true)} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Add Task
           </Button>
         </div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
           {/* Total Tasks */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 border border-gray-200" style={{ height: '85px' }}>
+            <div className="flex items-center justify-between h-full">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Tasks</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{totalTasks}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Total Tasks</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{totalTasks}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <ListTodo className="w-6 h-6 text-purple-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-600" />
               </div>
             </div>
           </div>
 
           {/* Open Tasks */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 border border-gray-200" style={{ height: '85px' }}>
+            <div className="flex items-center justify-between h-full">
               <div>
-                <p className="text-sm font-medium text-gray-600">Open</p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">{openTasks}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Open</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 mt-1 sm:mt-2">{openTasks}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-blue-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600" />
               </div>
             </div>
           </div>
 
           {/* Pending Tasks */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 border border-gray-200" style={{ height: '85px' }}>
+            <div className="flex items-center justify-between h-full">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">{pendingTasks}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Pending</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-yellow-600 mt-1 sm:mt-2">{pendingTasks}</p>
               </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-yellow-600" />
               </div>
             </div>
           </div>
 
           {/* In Progress Tasks */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 border border-gray-200" style={{ height: '85px' }}>
+            <div className="flex items-center justify-between h-full">
               <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
-                <p className="text-3xl font-bold text-purple-600 mt-2">{inProgressTasks}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-purple-600 mt-1 sm:mt-2">{inProgressTasks}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                <ListTodo className="w-6 h-6 text-purple-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <ListTodo className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-600" />
               </div>
             </div>
           </div>
 
           {/* Closed Tasks */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 border border-gray-200" style={{ height: '85px' }}>
+            <div className="flex items-center justify-between h-full">
               <div>
-                <p className="text-sm font-medium text-gray-600">Closed</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{closedTasks}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Closed</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-green-600 mt-1 sm:mt-2">{closedTasks}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <XCircle className="w-6 h-6 text-green-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" />
               </div>
             </div>
           </div>
 
           {/* Overdue Tasks */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-lg shadow p-3 sm:p-4 md:p-6 border border-gray-200" style={{ height: '85px' }}>
+            <div className="flex items-center justify-between h-full">
               <div>
-                <p className="text-sm font-medium text-gray-600">Overdue</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{overdueTasks}</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-600">Overdue</p>
+                <p className="text-xl sm:text-2xl md:text-3xl font-bold text-red-600 mt-1 sm:mt-2">{overdueTasks}</p>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-red-600" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters Section */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-sm font-semibold text-gray-700">Filter By:</span>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700">Filter By:</span>
 
             {/* Start Date */}
             <Input
@@ -491,7 +491,7 @@ export default function Tasks() {
                 setCurrentPage(1);
               }}
               placeholder="dd/mm/yyyy"
-              className="w-44"
+              className="w-full md:w-[170px] text-xs sm:text-sm"
             />
 
             {/* End Date */}
@@ -503,7 +503,7 @@ export default function Tasks() {
                 setCurrentPage(1);
               }}
               placeholder="dd/mm/yyyy"
-              className="w-44"
+              className="w-full md:w-[170px] text-xs sm:text-sm"
             />
 
             {/* Task Category */}
@@ -511,7 +511,7 @@ export default function Tasks() {
               setFilterTaskCategory(value);
               setCurrentPage(1);
             }}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="w-full md:w-[170px] text-xs sm:text-sm">
                 <SelectValue placeholder="Select Task Category" />
               </SelectTrigger>
               <SelectContent>
@@ -529,7 +529,7 @@ export default function Tasks() {
               setFilterTaskType(value);
               setCurrentPage(1);
             }}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="w-full md:w-[170px] text-xs sm:text-sm">
                 <SelectValue placeholder="Select Task Status" />
               </SelectTrigger>
               <SelectContent>
@@ -542,29 +542,31 @@ export default function Tasks() {
               </SelectContent>
             </Select>
 
-            {/* Filter Button */}
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
-              Filter
-            </Button>
-
-            {/* Clear Button */}
-            {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters} className="border-gray-300">
-                Clear
+            {/* Action Buttons */}
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-6 md:px-8 text-xs sm:text-sm flex-1 md:flex-none">
+                Filter
               </Button>
-            )}
+
+              {/* Clear Button */}
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearFilters} className="border-gray-300 px-4 sm:px-6 text-xs sm:text-sm flex-1 md:flex-none">
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Tasks Table with Show entries and Search */}
         <div className="bg-white rounded-lg shadow border" style={{ borderColor: '#e4e4e4' }}>
           {/* Show entries and Search - Inside card */}
-          <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: '#e4e4e4' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-4 py-3 sm:py-4 border-b" style={{ borderColor: '#e4e4e4' }}>
             {/* Left side - Show entries */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700">Show</span>
+              <span className="text-xs sm:text-sm text-gray-700">Show</span>
               <Select value={perPage} onValueChange={handlePerPageChange}>
-                <SelectTrigger className="w-20">
+                <SelectTrigger className="w-16 sm:w-20 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -575,17 +577,15 @@ export default function Tasks() {
                   <SelectItem value="100">100</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-gray-700">entries</span>
             </div>
 
             {/* Right side - Search */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-700">Search:</span>
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
               <Input
                 placeholder="Search tasks..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-64"
+                className="flex-1 sm:w-48 md:w-64 text-xs sm:text-sm"
               />
             </div>
           </div>
@@ -620,7 +620,141 @@ export default function Tasks() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile Card View */}
+              <div className="block md:hidden divide-y divide-gray-200">
+                {tasks.map((task, index) => {
+                  const { label, color } = getStatusDisplay(task);
+                  return (
+                    <div key={task.id} className="p-4 hover:bg-gray-50">
+                      <div className="space-y-3">
+                        {/* Task Name and Number */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <button
+                              onClick={() => handleViewDetails(task)}
+                              className="font-semibold text-blue-600 hover:text-blue-800 text-left break-words text-sm"
+                            >
+                              #{(currentPage - 1) * parseInt(perPage) + index + 1}. {task.task_name}
+                            </button>
+                            {task.description && (
+                              <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                {task.description}
+                              </p>
+                            )}
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleViewDetails(task)}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditTask(task)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              {(user?.role_id === 1 || task.user_id === user?.id) && (
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteTask(task)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        {/* Status */}
+                        <div>
+                          {(() => {
+                            const statusBadge = (
+                              <span className={`inline-flex items-center ${color} px-2.5 py-1 rounded text-xs font-semibold`}>
+                                {String(label)}
+                              </span>
+                            );
+
+                            if (task.closing_comment) {
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      {statusBadge}
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                      <p className="font-semibold mb-1">Closing Comment:</p>
+                                      <p className="text-sm">{task.closing_comment}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            }
+                            return statusBadge;
+                          })()}
+                        </div>
+
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          {task.ticket && (
+                            <div>
+                              <span className="text-gray-500">Ticket:</span>
+                              <button
+                                onClick={() => handleTicketClick(task.ticket!.tracking_number)}
+                                className="ml-1 text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                disabled={loadingTicket}
+                              >
+                                {String(task.ticket.tracking_number)}
+                              </button>
+                            </div>
+                          )}
+                          {task.category && (
+                            <div>
+                              <span className="text-gray-500">Category:</span>
+                              <span className="ml-1 font-medium text-gray-900">
+                                {String(task.category.category)}
+                              </span>
+                            </div>
+                          )}
+                          {task.branch && (
+                            <div>
+                              <span className="text-gray-500">Branch:</span>
+                              <span className="ml-1 text-gray-900">{task.branch.branch_name}</span>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-gray-500">Created by:</span>
+                            <span className="ml-1 text-gray-900">{task.user?.name || 'N/A'}</span>
+                          </div>
+                        </div>
+
+                        {/* Agents */}
+                        {task.agent && task.agent.length > 0 && (
+                          <div className="text-xs">
+                            <span className="text-gray-500">Agents:</span>
+                            <span className="ml-1 text-gray-900">
+                              {task.agent.map(agent => String(agent.name)).join(', ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Dates */}
+                        <div className="flex justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
+                          <span>Due: {formatDateTime(task.time)}</span>
+                          <span>Created: {formatDate(task.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table style={{ borderCollapse: 'collapse' }}>
                   <TableHeader style={{ backgroundColor: '#f9fafb' }}>
                     <TableRow className="border-b" style={{ borderColor: '#e4e4e4' }}>
@@ -767,21 +901,21 @@ export default function Tasks() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: '#e4e4e4', backgroundColor: '#ffffff' }}>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-4 py-3 border-t" style={{ borderColor: '#e4e4e4', backgroundColor: '#ffffff' }}>
+                <div className="flex items-center justify-center sm:justify-start">
+                  <span className="text-xs sm:text-sm text-gray-600">
                     Showing {Math.min((currentPage - 1) * parseInt(perPage) + 1, totalItems)} to{' '}
                     {Math.min(currentPage * parseInt(perPage), totalItems)} of {totalItems} entries
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center justify-center gap-1">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="text-sm px-4 border-gray-300"
+                      className="text-xs sm:text-sm px-2 sm:px-4 border-gray-300"
                     >
                       Prev
                     </Button>
@@ -806,7 +940,7 @@ export default function Tasks() {
                             variant={currentPage === pageNum ? "default" : "outline"}
                             size="sm"
                             onClick={() => handlePageChange(pageNum)}
-                            className={`w-9 h-9 p-0 text-sm ${
+                            className={`w-7 h-7 sm:w-9 sm:h-9 p-0 text-xs sm:text-sm ${
                               currentPage === pageNum
                                 ? 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600'
                                 : 'bg-white border-gray-300 hover:bg-gray-50'
@@ -823,7 +957,7 @@ export default function Tasks() {
                       size="sm"
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="text-sm px-4 border-gray-300"
+                      className="text-xs sm:text-sm px-2 sm:px-4 border-gray-300"
                     >
                       Next
                     </Button>

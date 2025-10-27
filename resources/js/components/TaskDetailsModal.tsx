@@ -395,7 +395,7 @@ export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDeta
                     Add
                   </Button>
                 </div>
-                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 mr-2" >
                   {loadingNotes ? (
                     <p className="text-center text-gray-500 py-8">Loading notes...</p>
                   ) : notes.length === 0 ? (
