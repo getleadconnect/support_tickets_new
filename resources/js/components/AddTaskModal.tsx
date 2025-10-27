@@ -298,6 +298,9 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
 
             {/* Category and Status */}
             <div className="grid grid-cols-2 gap-4">
+
+
+
               <div>
                 <Label htmlFor="category_id">Task Category</Label>
                 <Select
@@ -316,42 +319,7 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
                   </SelectContent>
                 </Select>
               </div>
-
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={String(formData.status)}
-                  onValueChange={(value) => handleInputChange('status', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taskStatuses.map((status) => (
-                      <SelectItem key={status.id} value={status.id.toString()}>
-                        {status.status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Due Date/Time and Assign Agents */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="time">
-                  Due Date & Time <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="time"
-                  type="datetime-local"
-                  value={formData.time}
-                  onChange={(e) => handleInputChange('time', e.target.value)}
-                  required
-                />
-              </div>
-
+                
               <div>
                 <Label>Assign Agents</Label>
               <div className="relative" ref={agentsDropdownRef}>
@@ -415,6 +383,42 @@ export function AddTaskModal({ open, onClose, onSuccess, task }: AddTaskModalPro
                   </div>
                 )}
               </div>
+              </div>
+
+
+            </div>
+
+            {/* Due Date/Time and Assign Agents */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={String(formData.status)}
+                  onValueChange={(value) => handleInputChange('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskStatuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id.toString()}>
+                        {status.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="time">
+                  Due Date & Time <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="time"
+                  type="datetime-local"
+                  value={formData.time}
+                  onChange={(e) => handleInputChange('time', e.target.value)}
+                  required
+                />
               </div>
             </div>
 

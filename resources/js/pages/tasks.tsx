@@ -701,7 +701,7 @@ export default function Tasks() {
                           {(() => {
                             const { label, color } = getStatusDisplay(task);
                             const statusBadge = (
-                              <span className={`inline-flex items-center ${color} px-3 py-1 rounded text-xs font-semibold cursor-help`}>
+                              <span className={`inline-flex items-center ${color} px-3 py-1 rounded text-xs font-semibold cursor-pointer`}>
                                 {String(label)}
                               </span>
                             );

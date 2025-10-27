@@ -370,13 +370,13 @@ export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDeta
 
           {/* Right Column - Tabs (65%) */}
           <div>
-            <Tabs defaultValue="notes" className="w-full" style={{ width: '98%' }}>
-              <TabsList className="grid grid-cols-2" style={{ width: '98%' }}>
-                <TabsTrigger value="notes" className="flex items-center gap-2">
+            <Tabs defaultValue="notes" className="w-full">
+              <TabsList className="grid grid-cols-2 w-fit">
+                <TabsTrigger value="notes" className="flex items-center gap-2" style={{ width: '150px' }}>
                   <MessageSquare className="w-4 h-4" />
                   Notes
                 </TabsTrigger>
-                <TabsTrigger value="activities" className="flex items-center gap-2">
+                <TabsTrigger value="activities" className="flex items-center gap-2" style={{ width: '150px' }}>
                   <ActivityIcon className="w-4 h-4" />
                   Activities
                 </TabsTrigger>
@@ -389,7 +389,7 @@ export function TaskDetailsModal({ open, onClose, task, onTaskUpdate }: TaskDeta
                     onClick={() => setAddNoteModalOpen(true)}
                     size="sm"
                     className="flex items-center gap-1"
-                    style={{ marginRight: '15px' }}
+                    style={{ marginRight: '20px' }}
                   >
                     <Plus className="w-4 h-4" />
                     Add
