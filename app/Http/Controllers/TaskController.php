@@ -451,10 +451,34 @@ class TaskController extends Controller
      */
     public function getAgents()
     {
-        $agents = User::where('role_id', 2)
-            ->select('id', 'name', 'email')
-            ->orderBy('name')
-            ->get();
+        $user = auth()->user();
+        $query = User::where('role_id', 2)->select('id', 'name', 'email');
+
+        if ($user->role_id == 1) {
+            // Admin - Show all agents
+            // No additional filtering needed
+        } elseif ($user->role_id == 2) {
+            // Agent - Show only the current logged user
+            $query->where('id', $user->id);
+        } elseif ($user->role_id == 3) {
+            // Manager - Show only assigned agents
+            $assignedAgentIds = DB::table('assign_agents')
+                ->where('user_id', $user->id)
+                ->pluck('agent_id')
+                ->toArray();
+
+            if (!empty($assignedAgentIds)) {
+                $query->whereIn('id', $assignedAgentIds);
+            } else {
+                // If manager has no assigned agents, return empty
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($user->role_id == 4) {
+            // Branch Admin - Show agents from the same branch
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        $agents = $query->orderBy('name')->get();
 
         return response()->json($agents);
     }

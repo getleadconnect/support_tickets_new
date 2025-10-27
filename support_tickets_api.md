@@ -5739,3 +5739,393 @@ curl --location 'http://127.0.0.1:8000/api/dashboard-stats' \
         ]
     }
 }
+
+
+
+## TASK MANAGEMENT APIS
+
+# ** To get all tasks
+# Method: GET
+
+curl --location --request GET 'http://127.0.0.1:8000/api/tasks' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9' \
+--data '{
+    "start_date":null,
+    "end_date":null,
+    "agent_id":[8,6],
+    "category_id":null,
+    "status":1
+}'
+
+## **RESPONSE
+
+{
+    "current_page": 1,
+    "data": [
+        {
+            "id": 37,
+            "task_name": "new task name-22222",
+            "user_id": 1,
+            "ticket_id": null,
+            "type_id": null,
+            "branch_id": 2,
+            "time": "2025-10-24T12:29:00.000000Z",
+            "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
+            "created_at": "2025-10-24T06:59:27.000000Z",
+            "updated_at": "2025-10-24T09:11:01.000000Z",
+            "category_id": 1,
+            "status": 1,
+            "closed_time": "2025-10-24 09:04:31",
+            "closed_by": 1,
+            "closing_comment": null,
+            "user": {
+                "id": 1,
+                "name": "Shaji",
+                "country_code": "91",
+                "mobile": "1234567899",
+                "email": "superadmin@gmail.com",
+                "role_id": 1,
+                "department_id": 1,
+                "branch_id": null,
+                "status": 1,
+                "created_at": null,
+                "updated_at": "2025-08-16T08:18:36.000000Z",
+                "parent_id": null,
+                "firebase_id": null,
+                "image": null,
+                "designation_id": 3,
+                "password_validity": null,
+                "deleted_at": null
+            },
+            "ticket": null,
+            "type": null,
+            "category": {
+                "id": 1,
+                "category": "Call",
+                "created_at": null,
+                "updated_at": null,
+                "created_by": 1
+            },
+            "agent": [
+                {
+                    "id": 8,
+                    "name": "Anusha",
+                    "country_code": "91",
+                    "mobile": "1234567899",
+                    "email": "anusha1@krs.in",
+                    "role_id": 2,
+                    "department_id": null,
+                    "branch_id": 2,
+                    "status": 1,
+                    "created_at": "2024-12-23T13:22:00.000000Z",
+                    "updated_at": "2024-12-23T13:22:00.000000Z",
+                    "parent_id": 3,
+                    "firebase_id": null,
+                    "image": null,
+                    "designation_id": 1,
+                    "password_validity": null,
+                    "deleted_at": null,
+                    "pivot": {
+                        "task_id": 37,
+                        "agent_id": 8
+                    }
+                },
+                {
+                    "id": 18,
+                    "name": "arun",
+                    "country_code": "91",
+                    "mobile": "1234567899",
+                    "email": "muneer+11@gmail.com",
+                    "role_id": 2,
+                    "department_id": null,
+                    "branch_id": 5,
+                    "status": 1,
+                    "created_at": "2025-02-19T21:36:13.000000Z",
+                    "updated_at": "2025-02-19T21:36:31.000000Z",
+                    "parent_id": 5,
+                    "firebase_id": null,
+                    "image": null,
+                    "designation_id": 4,
+                    "password_validity": null,
+                    "deleted_at": "2025-02-19 21:36:31",
+                    "pivot": {
+                        "task_id": 37,
+                        "agent_id": 18
+                    }
+                },
+                {
+                    "id": 6,
+                    "name": "Babu",
+                    "country_code": "91",
+                    "mobile": "1234567899",
+                    "email": "shaji4@gmail.com",
+                    "role_id": 2,
+                    "department_id": null,
+                    "branch_id": 2,
+                    "status": 1,
+                    "created_at": "2024-12-13T14:12:10.000000Z",
+                    "updated_at": "2024-12-23T13:32:18.000000Z",
+                    "parent_id": 3,
+                    "firebase_id": null,
+                    "image": null,
+                    "designation_id": 1,
+                    "password_validity": null,
+                    "deleted_at": "2024-12-23 13:32:18",
+                    "pivot": {
+                        "task_id": 37,
+                        "agent_id": 6
+                    }
+                },
+                {
+                    "id": 19,
+                    "name": "dileep",
+                    "country_code": "91",
+                    "mobile": "1234567899",
+                    "email": "muneerr+21@gmail.com",
+                    "role_id": 2,
+                    "department_id": null,
+                    "branch_id": 5,
+                    "status": 1,
+                    "created_at": "2025-02-19T21:36:53.000000Z",
+                    "updated_at": "2025-02-19T21:37:52.000000Z",
+                    "parent_id": 5,
+                    "firebase_id": null,
+                    "image": null,
+                    "designation_id": 3,
+                    "password_validity": null,
+                    "deleted_at": "2025-02-19 21:37:52",
+                    "pivot": {
+                        "task_id": 37,
+                        "agent_id": 19
+                    }
+                }
+            ],
+            "branch": {
+                "id": 2,
+                "branch_name": "branch one",
+                "created_by": 1,
+                "created_at": "2025-05-12T12:54:10.000000Z",
+                "updated_at": "2025-05-12T12:54:10.000000Z"
+            },
+            "task_status": {
+                "id": 1,
+                "status": "Open",
+                "created_at": null,
+                "updated_at": null,
+                "created_by": 1
+            }
+        }
+    ],
+    "first_page_url": "http://127.0.0.1:8000/api/tasks?page=1",
+    "from": 1,
+    "last_page": 1,
+    "last_page_url": "http://127.0.0.1:8000/api/tasks?page=1",
+    "links": [
+        {
+            "url": null,
+            "label": "&laquo; Previous",
+            "active": false
+        },
+        {
+            "url": "http://127.0.0.1:8000/api/tasks?page=1",
+            "label": "1",
+            "active": true
+        },
+        {
+            "url": null,
+            "label": "Next &raquo;",
+            "active": false
+        }
+    ],
+    "next_page_url": null,
+    "path": "http://127.0.0.1:8000/api/tasks",
+    "per_page": 15,
+    "prev_page_url": null,
+    "to": 1,
+    "total": 1
+}
+
+
+## TO GET ALL TASK CATEGORIES
+## Method: GET
+
+curl --location 'http://127.0.0.1:8000/api/task-categories' \
+--header 'Accept: application/atom+xml' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
+
+## **RESPONSE
+
+[
+    {
+        "id": 1,
+        "category": "Call",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    },
+    {
+        "id": 2,
+        "category": "Meeting",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    },
+    {
+        "id": 3,
+        "category": "Sales",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    }
+]
+
+
+## TO GET ALL TASK STATUSES
+## Method: GET
+
+curl --location 'http://127.0.0.1:8000/api/task-statuses' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
+
+## **RESPONSE
+
+[
+    {
+        "id": 1,
+        "status": "Open",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    },
+    {
+        "id": 2,
+        "status": "Pending",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    },
+    {
+        "id": 3,
+        "status": "In Progress",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    },
+    {
+        "id": 4,
+        "status": "Closed",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    }
+]
+
+## ** TO GET ALL AGENTS FOR FILTER TASK
+## METHOD:GET
+
+curl --location 'http://127.0.0.1:8000/api/task-agents' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
+
+## **RESPONSE
+
+[
+    {
+        "id": 8,
+        "name": "Anusha",
+        "email": "anusha1@krs.in"
+    },
+    {
+        "id": 18,
+        "name": "arun",
+        "email": "muneer+11@gmail.com"
+    },
+    {
+        "id": 6,
+        "name": "Babu",
+        "email": "shaji4@gmail.com"
+    },
+    {
+        "id": 11,
+        "name": "Babu",
+        "email": "babu1@krs.in"
+    },
+    {
+        "id": 12,
+        "name": "Candan Mathai Francis",
+        "email": "tl1.customerservice@krs.in"
+    },
+    {
+        "id": 19,
+        "name": "dileep",
+        "email": "muneerr+21@gmail.com"
+    },
+    {
+        "id": 10,
+        "name": "Jithin",
+        "email": "jithin1@krs.in"
+    },
+    {
+        "id": 7,
+        "name": "Manoj.M",
+        "email": "manoj1@krs.in"
+    },
+    {
+        "id": 28,
+        "name": "rajesh",
+        "email": "ggg1@gmail.com"
+    },
+    {
+        "id": 15,
+        "name": "raju",
+        "email": "test1@gmail.com"
+    },
+    {
+        "id": 17,
+        "name": "ram",
+        "email": "muneer1@gmail.com"
+    },
+    {
+        "id": 27,
+        "name": "ravi",
+        "email": "dfdfd1@gmail.com"
+    },
+    {
+        "id": 21,
+        "name": "satheesh",
+        "email": "ww1@gmail.com"
+    },
+    {
+        "id": 16,
+        "name": "seena",
+        "email": "muneerahamed1@gmail.com"
+    },
+    {
+        "id": 9,
+        "name": "Shaheera",
+        "email": "shahe1@krs.in"
+    },
+    {
+        "id": 30,
+        "name": "ssasadadasdasdasdad",
+        "email": "yyss@gmail.com"
+    },
+    {
+        "id": 20,
+        "name": "suresh",
+        "email": "ss1@gmail.com"
+    },
+    {
+        "id": 13,
+        "name": "system",
+        "email": "system@krs.com"
+    },
+    {
+        "id": 29,
+        "name": "yyyy",
+        "email": "uyyy@gmail.com"
+    }
+]
+
