@@ -405,3 +405,215 @@ Now displays 6 cards in the following order:
 
 #### Build Status:
 ✅ Build completed successfully (52.36s)
+
+---
+
+## October 27, 2025
+
+### Tasks List - Mobile Responsive Design & Role-Based Agent Filtering
+**Feature:** Complete mobile responsiveness for Tasks list page and role-based agent filtering in task creation modal.
+
+#### Changes Made:
+
+### 1. Complete Mobile Responsive Design
+**Implementation:** Transformed Tasks list page to be fully responsive across all device sizes
+
+#### 1.1 Page Layout & Header
+- **Tasks Page** (`resources/js/pages/tasks.tsx`)
+  - Updated main container with responsive padding: `p-2 sm:p-4 md:p-0` (line 386)
+  - Header section stacks vertically on mobile: `flex-col sm:flex-row` (line 388)
+  - "Add Task" button full width on mobile, auto on desktop (line 393)
+  - Responsive text sizes: `text-2xl sm:text-3xl` for heading (line 390)
+
+#### 1.2 Stats Info Cards
+- **Height Standardization**: All cards fixed at `height: 85px` (lines 402, 415, 428, 441, 454, 467)
+- **Responsive Grid**:
+  - Mobile: 2 columns (`grid-cols-2`)
+  - Tablet: 3 columns (`sm:grid-cols-3`)
+  - Desktop: 6 columns (`lg:grid-cols-6`)
+- **Responsive Padding**: `p-3 sm:p-4 md:p-6`
+- **Responsive Icons**: `w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12`
+- **Responsive Text**: `text-xl sm:text-2xl md:text-3xl` for numbers
+- **Gap Spacing**: `gap-2 sm:gap-3 md:gap-4`
+
+#### 1.3 Filter Section Enhancements
+- **Desktop Layout**: Single horizontal line with all controls (line 482)
+  - `flex-col md:flex-row md:items-center` - stacks on mobile, horizontal on desktop
+- **Filter Control Widths**:
+  - Mobile: Full width (`w-full`)
+  - Desktop: Fixed 170px (`md:w-[170px]`)
+- **Applied to**:
+  - Start Date input (line 495)
+  - End Date input (line 507)
+  - Task Category select (line 515)
+  - Task Status select (line 533)
+- **Action Buttons**: Full width on mobile, auto on desktop (line 547)
+
+#### 1.4 Datatable Improvements
+- **Show Entries & Search Bar**:
+  - Removed "entries" label - now shows "Show [dropdown]" (lines 568-582)
+  - Removed "Search:" label - input has placeholder only (lines 585-593)
+  - Responsive widths: `w-16 sm:w-20` for dropdown
+  - Search input: `flex-1 sm:w-48 md:w-64`
+
+#### 1.5 Mobile Card View
+- **Card-based Layout** (lines 627-758):
+  - Displays below medium breakpoint (`block md:hidden`)
+  - Task cards with complete information:
+    - Task number and name with clickable details
+    - Status badge with tooltip support
+    - Info grid: Ticket, Category, Branch, Created by
+    - Assigned agents list
+    - Due date and created date
+    - Action dropdown menu in top-right
+  - Responsive text: `text-sm` for main content, `text-xs` for metadata
+  - Dividers between cards: `divide-y divide-gray-200`
+
+#### 1.6 Desktop Table View
+- **Traditional Table** (line 761):
+  - Shows above medium breakpoint (`hidden md:block`)
+  - Full table with all columns
+  - Horizontal scrolling if needed (`overflow-x-auto`)
+
+#### 1.7 Pagination Responsiveness
+- **Layout**: Stacks on mobile, horizontal on desktop (line 908)
+- **Info Text**: Centered on mobile, left-aligned on desktop (line 909)
+- **Page Buttons**: Smaller on mobile `w-7 h-7 sm:w-9 sm:h-9` (line 947)
+- **Prev/Next Buttons**: Reduced padding on mobile `px-2 sm:px-4` (lines 922, 964)
+
+### 2. Role-Based Agent Filtering in Task Modal
+**Authorization:** Implemented role-based filtering for "Assign Agents" dropdown
+
+#### 2.1 Backend Implementation
+- **TaskController** (`app/Http/Controllers/TaskController.php`)
+  - Updated `getAgents()` method (lines 452-484)
+  - Added role-based filtering logic:
+
+**Role-Based Logic:**
+
+1. **Admin (role_id == 1)**
+   ```php
+   // Show all agents in the system
+   // No additional filtering
+   ```
+
+2. **Agent (role_id == 2)**
+   ```php
+   // Show only the current logged user
+   $query->where('id', $user->id);
+   ```
+
+3. **Manager (role_id == 3)**
+   ```php
+   // Show only assigned agents
+   $assignedAgentIds = DB::table('assign_agents')
+       ->where('user_id', $user->id)
+       ->pluck('agent_id')
+       ->toArray();
+
+   if (!empty($assignedAgentIds)) {
+       $query->whereIn('id', $assignedAgentIds);
+   } else {
+       $query->whereRaw('1 = 0'); // No agents assigned
+   }
+   ```
+
+4. **Branch Admin (role_id == 4)**
+   ```php
+   // Show agents from the same branch
+   $query->where('branch_id', $user->branch_id);
+   ```
+
+#### Technical Implementation:
+
+```typescript
+// Mobile Card View Structure
+<div className="block md:hidden divide-y divide-gray-200">
+  {tasks.map((task, index) => (
+    <div key={task.id} className="p-4 hover:bg-gray-50">
+      <div className="space-y-3">
+        {/* Task Name and Number */}
+        <div className="flex items-start justify-between gap-2">
+          <button onClick={() => handleViewDetails(task)}>
+            #{index + 1}. {task.task_name}
+          </button>
+          <DropdownMenu>...</DropdownMenu>
+        </div>
+
+        {/* Status Badge */}
+        <div>{statusBadge}</div>
+
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {/* Ticket, Category, Branch, Created by */}
+        </div>
+
+        {/* Agents */}
+        {task.agent && <div>{agents.join(', ')}</div>}
+
+        {/* Dates */}
+        <div className="flex justify-between text-xs">
+          <span>Due: {formatDateTime(task.time)}</span>
+          <span>Created: {formatDate(task.created_at)}</span>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+```
+
+```php
+// Role-based agent filtering in getAgents()
+public function getAgents()
+{
+    $user = auth()->user();
+    $query = User::where('role_id', 2)->select('id', 'name', 'email');
+
+    if ($user->role_id == 1) {
+        // Admin - Show all agents
+    } elseif ($user->role_id == 2) {
+        // Agent - Show only current user
+        $query->where('id', $user->id);
+    } elseif ($user->role_id == 3) {
+        // Manager - Show assigned agents
+        $assignedAgentIds = DB::table('assign_agents')
+            ->where('user_id', $user->id)
+            ->pluck('agent_id')
+            ->toArray();
+
+        if (!empty($assignedAgentIds)) {
+            $query->whereIn('id', $assignedAgentIds);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+    } elseif ($user->role_id == 4) {
+        // Branch Admin - Show same branch agents
+        $query->where('branch_id', $user->branch_id);
+    }
+
+    $agents = $query->orderBy('name')->get();
+    return response()->json($agents);
+}
+```
+
+#### Responsive Breakpoints Used:
+- **Mobile**: < 640px (default)
+- **sm**: ≥ 640px (small tablets)
+- **md**: ≥ 768px (tablets)
+- **lg**: ≥ 1024px (desktops)
+
+#### Impact:
+- **Mobile Experience**: Tasks page fully usable on mobile devices with card-based layout
+- **Desktop Experience**: Clean, organized table view with consistent 170px filter controls
+- **Visual Consistency**: All info cards have uniform 85px height
+- **User Interface**: Cleaner datatable without redundant labels
+- **Security**: Role-based agent visibility ensures proper access control
+- **Authorization**: Users can only assign tasks to agents they have permission to manage
+- **Data Integrity**: Agents dropdown filtered based on user's role and assigned agents
+
+#### Files Modified:
+- `resources/js/pages/tasks.tsx` - Complete mobile responsive redesign
+- `app/Http/Controllers/TaskController.php` - Role-based agent filtering
+
+#### Build Status:
+✅ Build completed successfully (14.05s)

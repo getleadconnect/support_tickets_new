@@ -87,7 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tasks/{id}/activities', [TaskController::class, 'getTaskActivities']);
     Route::get('/tasks/{id}/notes', [TaskController::class, 'getTaskNotes']);
     Route::post('/tasks/{id}/notes', [TaskController::class, 'addTaskNote']);
-
+    
     // Customer routes
     Route::get('/customers', [CustomerController::class, 'index']);
     Route::post('/customers', [CustomerController::class, 'store']);

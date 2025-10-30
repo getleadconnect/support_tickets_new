@@ -5947,6 +5947,124 @@ curl --location --request GET 'http://127.0.0.1:8000/api/tasks' \
     "total": 1
 }
 
+## TO GET SELECTED TASK DETAILS
+## METHOD:GET
+## api : /tasks/{id}
+
+curl --location 'http://127.0.0.1:8000/api/tasks/38' \
+--header 'Accept: application/ecmascript' \
+--header 'Authorization: Bearer 295|e1LwCic69QLKCrAaty3X7Gi5zkpn33OFM0AlRra1e5a593da'
+
+## **RESPONSE
+
+{
+    "id": 38,
+    "task_name": "testing-7777",
+    "user_id": 1,
+    "ticket_id": null,
+    "type_id": null,
+    "branch_id": 2,
+    "time": "2025-10-28T06:30:00.000000Z",
+    "description": "this is testing task",
+    "created_at": "2025-10-24T07:15:22.000000Z",
+    "updated_at": "2025-10-28T08:03:14.000000Z",
+    "category_id": 2,
+    "status": 2,
+    "closed_time": "2025-10-24 09:28:49",
+    "closed_by": 1,
+    "closing_comment": null,
+    "user": {
+        "id": 1,
+        "name": "Shaji",
+        "country_code": "91",
+        "mobile": "1234567899",
+        "email": "superadmin@gmail.com",
+        "role_id": 1,
+        "department_id": 1,
+        "branch_id": null,
+        "status": 1,
+        "created_at": null,
+        "updated_at": "2025-08-16T08:18:36.000000Z",
+        "parent_id": null,
+        "firebase_id": null,
+        "image": null,
+        "designation_id": 3,
+        "password_validity": null,
+        "deleted_at": null
+    },
+    "ticket": null,
+    "type": null,
+    "category": {
+        "id": 2,
+        "category": "Meeting",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    },
+    "agent": [
+        {
+            "id": 6,
+            "name": "Babu",
+            "country_code": "91",
+            "mobile": "1234567899",
+            "email": "shaji4@gmail.com",
+            "role_id": 2,
+            "department_id": null,
+            "branch_id": 2,
+            "status": 1,
+            "created_at": "2024-12-13T14:12:10.000000Z",
+            "updated_at": "2024-12-23T13:32:18.000000Z",
+            "parent_id": 3,
+            "firebase_id": null,
+            "image": null,
+            "designation_id": 1,
+            "password_validity": null,
+            "deleted_at": "2024-12-23 13:32:18",
+            "pivot": {
+                "task_id": 38,
+                "agent_id": 6
+            }
+        },
+        {
+            "id": 7,
+            "name": "Manoj.M",
+            "country_code": "91",
+            "mobile": "1234567899",
+            "email": "manoj1@krs.in",
+            "role_id": 2,
+            "department_id": null,
+            "branch_id": 2,
+            "status": 1,
+            "created_at": "2024-12-23T13:20:05.000000Z",
+            "updated_at": "2024-12-23T13:20:05.000000Z",
+            "parent_id": 3,
+            "firebase_id": null,
+            "image": null,
+            "designation_id": 1,
+            "password_validity": null,
+            "deleted_at": null,
+            "pivot": {
+                "task_id": 38,
+                "agent_id": 7
+            }
+        }
+    ],
+    "branch": {
+        "id": 2,
+        "branch_name": "branch one",
+        "created_by": 1,
+        "created_at": "2025-05-12T12:54:10.000000Z",
+        "updated_at": "2025-05-12T12:54:10.000000Z"
+    },
+    "task_status": {
+        "id": 2,
+        "status": "Pending",
+        "created_at": null,
+        "updated_at": null,
+        "created_by": 1
+    }
+}
+
 
 ## TO GET ALL TASK CATEGORIES
 ## Method: GET
@@ -6029,6 +6147,7 @@ curl --location 'http://127.0.0.1:8000/api/task-agents' \
 --header 'Accept: application/json' \
 --header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
 
+
 ## **RESPONSE
 
 [
@@ -6038,94 +6157,587 @@ curl --location 'http://127.0.0.1:8000/api/task-agents' \
         "email": "anusha1@krs.in"
     },
     {
-        "id": 18,
-        "name": "arun",
-        "email": "muneer+11@gmail.com"
-    },
-    {
-        "id": 6,
-        "name": "Babu",
-        "email": "shaji4@gmail.com"
-    },
-    {
         "id": 11,
         "name": "Babu",
         "email": "babu1@krs.in"
     },
     {
-        "id": 12,
-        "name": "Candan Mathai Francis",
-        "email": "tl1.customerservice@krs.in"
-    },
-    {
         "id": 19,
         "name": "dileep",
         "email": "muneerr+21@gmail.com"
+    }
+]
+
+
+## TO GET A PARTICULATR TICKETS DETAILS
+## METHOD : GET
+## api:  /task-ticket/{trackingNumber}
+
+curl --location 'http://127.0.0.1:8000/api/task-ticket/TKT0000718' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
+
+## **RESPONSE
+
+{
+    "id": 718,
+    "tracking_number": "TKT0000718",
+    "issue": "this is testing issue",
+    "description": "this is testing",
+    "due_date": "2025-10-17 00:00:00",
+    "status": "Returned",
+    "status_id": 5,
+    "priority": null,
+    "priority_id": 1
+}
+
+
+
+## TO GET TASK ACTIVITIES
+## METHOD: GET
+## api: /tasks/{id}/activities
+
+curl --location 'http://127.0.0.1:8000/api/tasks/38/activities' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
+
+## **RESPONSE
+
+[
+    {
+        "id": 643,
+        "type": "Task Updated",
+        "note": "Task \"nw task-333\" updated: status changed from Open to Closed",
+        "title": null,
+        "status_id": null,
+        "branch_id": null,
+        "priority_id": null,
+        "agent_id": null,
+        "ticket_id": 718,
+        "log_id": null,
+        "created_by": 1,
+        "description": null,
+        "created_at": "2025-10-24T09:28:49.000000Z",
+        "updated_at": "2025-10-24T09:28:49.000000Z",
+        "task_id": 38,
+        "schedule_date": null,
+        "log_file": null,
+        "log_file_type": null,
+        "user": {
+            "id": 1,
+            "name": "Shaji"
+        }
     },
     {
-        "id": 10,
-        "name": "Jithin",
-        "email": "jithin1@krs.in"
+        "id": 639,
+        "type": "Task Updated",
+        "note": "Task \"nw task-333\" was updated",
+        "title": null,
+        "status_id": null,
+        "branch_id": null,
+        "priority_id": null,
+        "agent_id": null,
+        "ticket_id": 718,
+        "log_id": null,
+        "created_by": 1,
+        "description": null,
+        "created_at": "2025-10-24T07:17:18.000000Z",
+        "updated_at": "2025-10-24T07:17:18.000000Z",
+        "task_id": 38,
+        "schedule_date": null,
+        "log_file": null,
+        "log_file_type": null,
+        "user": {
+            "id": 1,
+            "name": "Shaji"
+        }
+    },
+    {
+        "id": 638,
+        "type": "Task Created",
+        "note": "Task \"nw task-333\" was created",
+        "title": null,
+        "status_id": null,
+        "branch_id": null,
+        "priority_id": null,
+        "agent_id": null,
+        "ticket_id": 718,
+        "log_id": null,
+        "created_by": 1,
+        "description": null,
+        "created_at": "2025-10-24T07:15:22.000000Z",
+        "updated_at": "2025-10-24T07:15:22.000000Z",
+        "task_id": 38,
+        "schedule_date": null,
+        "log_file": null,
+        "log_file_type": null,
+        "user": {
+            "id": 1,
+            "name": "Shaji"
+        }
+    }
+]
+
+
+## TO GET TASK NOTES 
+## METHOD :GET
+## api: /tasks/{id}/notes
+
+curl --location 'http://127.0.0.1:8000/api/tasks/38/notes' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9'
+
+
+## **RESPONSE
+
+[
+    {
+        "id": 2,
+        "task_id": 38,
+        "task_status": 2,
+        "comment": "Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. ",
+        "created_by": 1,
+        "created_at": "2025-10-24T12:59:57.000000Z",
+        "updated_at": "2025-10-24T12:59:57.000000Z",
+        "deleted_at": "2025-10-24 12:59:57",
+        "user": {
+            "id": 1,
+            "name": "Shaji"
+        }
+    },
+    {
+        "id": 1,
+        "task_id": 38,
+        "task_status": 1,
+        "comment": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. ",
+        "created_by": 1,
+        "created_at": "2025-10-24T12:59:09.000000Z",
+        "updated_at": "2025-10-24T12:59:09.000000Z",
+        "deleted_at": "2025-10-24 12:59:09",
+        "user": {
+            "id": 1,
+            "name": "Shaji"
+        }
     },
     {
         "id": 7,
-        "name": "Manoj.M",
-        "email": "manoj1@krs.in"
-    },
-    {
-        "id": 28,
-        "name": "rajesh",
-        "email": "ggg1@gmail.com"
-    },
-    {
-        "id": 15,
-        "name": "raju",
-        "email": "test1@gmail.com"
-    },
-    {
-        "id": 17,
-        "name": "ram",
-        "email": "muneer1@gmail.com"
-    },
-    {
-        "id": 27,
-        "name": "ravi",
-        "email": "dfdfd1@gmail.com"
-    },
-    {
-        "id": 21,
-        "name": "satheesh",
-        "email": "ww1@gmail.com"
-    },
-    {
-        "id": 16,
-        "name": "seena",
-        "email": "muneerahamed1@gmail.com"
-    },
-    {
-        "id": 9,
-        "name": "Shaheera",
-        "email": "shahe1@krs.in"
-    },
-    {
-        "id": 30,
-        "name": "ssasadadasdasdasdad",
-        "email": "yyss@gmail.com"
-    },
-    {
-        "id": 20,
-        "name": "suresh",
-        "email": "ss1@gmail.com"
-    },
-    {
-        "id": 13,
-        "name": "system",
-        "email": "system@krs.com"
-    },
-    {
-        "id": 29,
-        "name": "yyyy",
-        "email": "uyyy@gmail.com"
+        "task_id": 38,
+        "task_status": 3,
+        "comment": "this isteting task colsed",
+        "created_by": 1,
+        "created_at": "2025-10-24T09:28:49.000000Z",
+        "updated_at": "2025-10-24T09:28:49.000000Z",
+        "deleted_at": null,
+        "user": {
+            "id": 1,
+            "name": "Shaji"
+        }
     }
 ]
+
+## TO ADD TASK NOTE
+## METHOD:POST
+## api: /tasks/38/notes
+
+curl --location 'http://127.0.0.1:8000/api/tasks/38/notes' \
+--header 'Accept: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9' \
+--form 'comment="this is testing"' \
+--form 'task_status="2"'
+
+## **RESPONSE
+{
+    "message": "Note added successfully",
+    "note": {
+        "task_id": "38",
+        "task_status": "2",
+        "comment": "this is testing",
+        "created_by": 14,
+        "updated_at": "2025-10-27T12:37:56.000000Z",
+        "created_at": "2025-10-27T12:37:56.000000Z",
+        "id": 10,
+        "user": {
+            "id": 14,
+            "name": "Getlead testing"
+        }
+    },
+    "task": {
+        "id": 38,
+        "task_name": "nw task-333",
+        "user_id": 1,
+        "ticket_id": 718,
+        "type_id": null,
+        "branch_id": 2,
+        "time": "2025-10-24T13:30:00.000000Z",
+        "description": "sdf fdfd fdsf sdfdsfds dsfdsfdsf dsfdsfdsfdsfdsfdsfdsfsdfsdfds fdsfdsfdsfdfdsfdsfdsfdsfdsfdsf dfdfdfsdfdsfdf",
+        "created_at": "2025-10-24T07:15:22.000000Z",
+        "updated_at": "2025-10-27T12:37:56.000000Z",
+        "category_id": 1,
+        "status": "2",
+        "closed_time": "2025-10-24 09:28:49",
+        "closed_by": 1,
+        "closing_comment": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. ",
+        "user": {
+            "id": 1,
+            "name": "Shaji",
+            "country_code": "91",
+            "mobile": "1234567899",
+            "email": "superadmin@gmail.com",
+            "role_id": 1,
+            "department_id": 1,
+            "branch_id": null,
+            "status": 1,
+            "created_at": null,
+            "updated_at": "2025-08-16T08:18:36.000000Z",
+            "parent_id": null,
+            "firebase_id": null,
+            "image": null,
+            "designation_id": 3,
+            "password_validity": null,
+            "deleted_at": null
+        },
+        "ticket": {
+            "id": 718,
+            "issue": "this is testing issue",
+            "description": "this is testing",
+            "customer_id": 2,
+            "priority": 1,
+            "status": 5,
+            "ticket_type": "In Shop",
+            "ticket_label": null,
+            "notify_to": null,
+            "branch_id": 5,
+            "tracking_number": "TKT0000718",
+            "due_date": "2025-10-17 00:00:00",
+            "deleted_at": null,
+            "created_at": "2025-10-17T12:38:45.000000Z",
+            "updated_at": "2025-10-22T06:20:46.000000Z",
+            "created_by": 1,
+            "slug": "this-is-testing-issue-1760704725",
+            "service_id": "43234",
+            "closed_time": null,
+            "closed_by": null,
+            "closed_at": null,
+            "verified_at": null,
+            "remarks": null
+        },
+        "type": null,
+        "category": {
+            "id": 1,
+            "category": "Call",
+            "created_at": null,
+            "updated_at": null,
+            "created_by": 1
+        },
+        "agent": [
+            {
+                "id": 8,
+                "name": "Anusha",
+                "country_code": "91",
+                "mobile": "1234567899",
+                "email": "anusha1@krs.in",
+                "role_id": 2,
+                "department_id": null,
+                "branch_id": 2,
+                "status": 1,
+                "created_at": "2024-12-23T13:22:00.000000Z",
+                "updated_at": "2024-12-23T13:22:00.000000Z",
+                "parent_id": 3,
+                "firebase_id": null,
+                "image": null,
+                "designation_id": 1,
+                "password_validity": null,
+                "deleted_at": null,
+                "pivot": {
+                    "task_id": 38,
+                    "agent_id": 8
+                }
+            }
+        ],
+        "task_status": {
+            "id": 2,
+            "status": "Pending",
+            "created_at": null,
+            "updated_at": null,
+            "created_by": 1
+        }
+    }
+}
+
+
+
+## TO ADD NEW TASK
+## METHOD :POST
+## api: /tasks
+
+curl --location 'http://127.0.0.1:8000/api/tasks' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9' \
+--data '{
+    "task_name": "testing-55",
+    "ticket_id": null,
+    "type_id": null,
+    "category_id": "2",
+    "time":"2025-10-28 6:30:00",
+    "description": "this is testing task",
+    "status": "2",
+    "agent_ids":[6,7],
+    "closing_comment":null
+}'
+
+## **RESPONSE
+
+{
+    "message": "Task created successfully",
+    "task": {
+        "task_name": "testing-55",
+        "user_id": 14,
+        "ticket_id": null,
+        "type_id": null,
+        "category_id": "2",
+        "time": "2025-10-28T06:30:00.000000Z",
+        "description": "this is testing task",
+        "status": "2",
+        "branch_id": 4,
+        "updated_at": "2025-10-28T07:36:59.000000Z",
+        "created_at": "2025-10-28T07:36:59.000000Z",
+        "id": 41,
+        "user": {
+            "id": 14,
+            "name": "Getlead testing",
+            "country_code": "+91",
+            "mobile": "1234567899",
+            "email": "glead@gmail.com",
+            "role_id": 3,
+            "department_id": null,
+            "branch_id": 4,
+            "status": 1,
+            "created_at": "2025-02-11T10:33:43.000000Z",
+            "updated_at": "2025-02-19T11:30:52.000000Z",
+            "parent_id": 4,
+            "firebase_id": null,
+            "image": null,
+            "designation_id": 3,
+            "password_validity": null,
+            "deleted_at": null
+        },
+        "ticket": null,
+        "type": null,
+        "category": {
+            "id": 2,
+            "category": "Meeting",
+            "created_at": null,
+            "updated_at": null,
+            "created_by": 1
+        },
+        "agent": [
+            {
+                "id": 6,
+                "name": "Babu",
+                "country_code": "91",
+                "mobile": "1234567899",
+                "email": "shaji4@gmail.com",
+                "role_id": 2,
+                "department_id": null,
+                "branch_id": 2,
+                "status": 1,
+                "created_at": "2024-12-13T14:12:10.000000Z",
+                "updated_at": "2024-12-23T13:32:18.000000Z",
+                "parent_id": 3,
+                "firebase_id": null,
+                "image": null,
+                "designation_id": 1,
+                "password_validity": null,
+                "deleted_at": "2024-12-23 13:32:18",
+                "pivot": {
+                    "task_id": 41,
+                    "agent_id": 6
+                }
+            },
+            {
+                "id": 7,
+                "name": "Manoj.M",
+                "country_code": "91",
+                "mobile": "1234567899",
+                "email": "manoj1@krs.in",
+                "role_id": 2,
+                "department_id": null,
+                "branch_id": 2,
+                "status": 1,
+                "created_at": "2024-12-23T13:20:05.000000Z",
+                "updated_at": "2024-12-23T13:20:05.000000Z",
+                "parent_id": 3,
+                "firebase_id": null,
+                "image": null,
+                "designation_id": 1,
+                "password_validity": null,
+                "deleted_at": null,
+                "pivot": {
+                    "task_id": 41,
+                    "agent_id": 7
+                }
+            }
+        ],
+        "branch": {
+            "id": 4,
+            "branch_name": "branch three",
+            "created_by": 1,
+            "created_at": "2025-05-12T12:54:22.000000Z",
+            "updated_at": "2025-05-12T12:54:22.000000Z"
+        },
+        "task_status": {
+            "id": 2,
+            "status": "Pending",
+            "created_at": null,
+            "updated_at": null,
+            "created_by": 1
+        }
+    }
+}
+
+
+## TO UPDATE SPECIFIED TASK
+## METHOD :PUT
+## api: /tasks/{id}
+
+curl --location --request PUT 'http://127.0.0.1:8000/api/tasks/38' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer 277|4yExilJxMRN8r0msHiMKLeGFF4PAMEp1V9GRGPw71bcdf3f9' \
+--data '{
+    "task_name": "testing-7777",
+    "ticket_id":null,
+    "type_id":null,
+    "category_id":"2",
+    "time":"2025-10-28 6:30:00",
+    "description":"this is testing task",
+    "status":"2",
+    "agent_ids":[6,7],
+    "closing_comment":null
+}'
+
+## **RESPONSE
+
+{
+    "message": "Task updated successfully",
+    "task": {
+        "id": 38,
+        "task_name": "testing-7777",
+        "user_id": 1,
+        "ticket_id": null,
+        "type_id": null,
+        "branch_id": 2,
+        "time": "2025-10-28T06:30:00.000000Z",
+        "description": "this is testing task",
+        "created_at": "2025-10-24T07:15:22.000000Z",
+        "updated_at": "2025-10-28T08:03:14.000000Z",
+        "category_id": "2",
+        "status": "2",
+        "closed_time": "2025-10-24 09:28:49",
+        "closed_by": 1,
+        "closing_comment": null,
+        "user": {
+            "id": 1,
+            "name": "Shaji",
+            "country_code": "91",
+            "mobile": "1234567899",
+            "email": "superadmin@gmail.com",
+            "role_id": 1,
+            "department_id": 1,
+            "branch_id": null,
+            "status": 1,
+            "created_at": null,
+            "updated_at": "2025-08-16T08:18:36.000000Z",
+            "parent_id": null,
+            "firebase_id": null,
+            "image": null,
+            "designation_id": 3,
+            "password_validity": null,
+            "deleted_at": null
+        },
+        "ticket": null,
+        "type": null,
+        "category": {
+            "id": 2,
+            "category": "Meeting",
+            "created_at": null,
+            "updated_at": null,
+            "created_by": 1
+        },
+        "agent": [
+            {
+                "id": 6,
+                "name": "Babu",
+                "country_code": "91",
+                "mobile": "1234567899",
+                "email": "shaji4@gmail.com",
+                "role_id": 2,
+                "department_id": null,
+                "branch_id": 2,
+                "status": 1,
+                "created_at": "2024-12-13T14:12:10.000000Z",
+                "updated_at": "2024-12-23T13:32:18.000000Z",
+                "parent_id": 3,
+                "firebase_id": null,
+                "image": null,
+                "designation_id": 1,
+                "password_validity": null,
+                "deleted_at": "2024-12-23 13:32:18",
+                "pivot": {
+                    "task_id": 38,
+                    "agent_id": 6
+                }
+            },
+            {
+                "id": 7,
+                "name": "Manoj.M",
+                "country_code": "91",
+                "mobile": "1234567899",
+                "email": "manoj1@krs.in",
+                "role_id": 2,
+                "department_id": null,
+                "branch_id": 2,
+                "status": 1,
+                "created_at": "2024-12-23T13:20:05.000000Z",
+                "updated_at": "2024-12-23T13:20:05.000000Z",
+                "parent_id": 3,
+                "firebase_id": null,
+                "image": null,
+                "designation_id": 1,
+                "password_validity": null,
+                "deleted_at": null,
+                "pivot": {
+                    "task_id": 38,
+                    "agent_id": 7
+                }
+            }
+        ],
+        "task_status": {
+            "id": 2,
+            "status": "Pending",
+            "created_at": null,
+            "updated_at": null,
+            "created_by": 1
+        }
+    }
+}
+
+## TO DELETE SELECTED TASK
+## METHOD :DELETE
+## api: /tasks/{id}
+
+curl --location --request DELETE 'http://127.0.0.1:8000/api/tasks/39' \
+--header 'Accept: application/atom+xml' \
+--header 'Authorization: Bearer 295|e1LwCic69QLKCrAaty3X7Gi5zkpn33OFM0AlRra1e5a593da'
+
+## **RESPONSE
+
+{
+    "message": "Task deleted successfully"
+}
+
+
+
+
 
