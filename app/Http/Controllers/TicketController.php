@@ -141,6 +141,128 @@ class TicketController extends Controller
     }
 
     /**
+     * Display a listing of closed tickets only (status = 3).
+     */
+    public function closedTickets(Request $request)
+    {
+        $user = auth()->user();
+        $query = Ticket::with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'activity.user', 'activity.status', 'activity.priority'])
+        ->where('status', 3); // Only closed tickets
+
+        // Filter tickets based on user role
+        if ($user->role_id == 2) {
+            // Agents (role_id = 2) see tickets from their branch that are either assigned to them OR notified to them
+            $query->where(function($q) use ($user) {
+                // Must be either assigned or notified to this agent
+                $q->whereHas('agent', function($subQ) use ($user) {
+                    $subQ->where('agent_id', $user->id);
+                })->orWhereHas('notifyTo', function($subQ) use ($user) {
+                    $subQ->where('agent_id', $user->id);
+                });
+            });
+
+            // AND must be from their branch (or NULL branch for backwards compatibility)
+            if ($user->branch_id) {
+                $query->where(function($q) use ($user) {
+                    $q->where('branch_id', $user->branch_id)
+                      ->orWhereNull('branch_id');
+                });
+            }
+
+        } elseif ($user->role_id == 3) {
+            // Manager (role_id = 3) sees tickets assigned to their agents only
+            $assignedAgentIds = \DB::table('assign_agents')
+                ->where('user_id', $user->id)
+                ->pluck('agent_id')
+                ->toArray();
+
+            if (!empty($assignedAgentIds)) {
+                $query->whereHas('agent', function($q) use ($assignedAgentIds) {
+                    $q->whereIn('agent_id', $assignedAgentIds);
+                });
+            } else {
+                // If manager has no assigned agents, show no tickets
+                $query->whereRaw('1 = 0');
+            }
+
+        } elseif ($user->role_id == 4) {
+            // Branch Admin (role_id = 4) sees only tickets from their branch
+            if ($user->branch_id) {
+                $query->where('branch_id', $user->branch_id);
+            }
+        }
+
+        // Admin users (role_id = 1) can see all tickets - no filter needed
+
+        // Search functionality
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('issue', 'like', '%' . $search . '%')
+                  ->orWhere('description', 'like', '%' . $search . '%')
+                  ->orWhere('tracking_number', 'like', '%' . $search . '%')
+                  ->orWhereHas('customer', function($q) use ($search) {
+                      $q->where('name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+
+        // Customer filter
+        if ($request->has('customer_id') && $request->customer_id != null && $request->customer_id != 'all') {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        // Agent filter - filter tickets by assigned agent
+        if ($request->has('agent_id') && $request->agent_id != null && $request->agent_id != 'all') {
+            $query->whereHas('agent', function($q) use ($request) {
+                $q->where('agent_id', $request->agent_id);
+            });
+        }
+
+        // Date range filter
+        if ($request->has('start_date') && $request->start_date != null) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->has('end_date') && $request->end_date != null) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // Ticket type filter (based on tracking_number prefix)
+        if ($request->has('ticket_type') && $request->ticket_type != null && $request->ticket_type != 'all') {
+            $prefix = $request->ticket_type;
+            $query->where('tracking_number', 'like', $prefix . '%');
+        }
+
+        // Ticket label filter
+        if ($request->has('label_id') && $request->label_id != null && $request->label_id != 'all') {
+            $query->whereHas('ticketLabel', function($q) use ($request) {
+                $q->where('ticket_labels.id', $request->label_id);
+            });
+        }
+
+        // Priority filter
+        if ($request->has('priority_id') && $request->priority_id != null && $request->priority_id != 'all') {
+            $query->where('priority', $request->priority_id);
+        }
+
+        // Branch filter
+        if ($request->has('branch_id') && $request->branch_id != null && $request->branch_id != 'all') {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        // Sorting
+        $sortField = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortField, $sortOrder);
+
+        // Pagination with custom per page
+        $perPage = $request->get('per_page', 10);
+        $tickets = $query->paginate($perPage);
+
+        return response()->json($tickets);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)

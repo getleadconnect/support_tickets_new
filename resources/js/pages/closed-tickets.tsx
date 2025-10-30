@@ -23,14 +23,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { 
+import {
   Filter,
   Trash2,
   RotateCcw,
   Calendar,
   User,
   Home,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -90,14 +91,24 @@ export default function ClosedTickets() {
     agentId: 'all',
   });
 
+  // Pagination and search states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [perPage, setPerPage] = useState('10');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalItems, setTotalItems] = useState(0);
+
   useEffect(() => {
-    fetchClosedTickets();
     fetchCustomers();
     // Only fetch agents if user is admin (role_id = 1)
     if (user?.role_id === 1) {
       fetchAgents();
     }
   }, []);
+
+  useEffect(() => {
+    fetchClosedTickets();
+  }, [currentPage, perPage, searchTerm]);
 
   const fetchCustomers = async () => {
     try {
@@ -123,49 +134,40 @@ export default function ClosedTickets() {
   const fetchClosedTickets = async () => {
     setLoading(true);
     try {
-      const response = await axios.get('/tickets', {
+      const response = await axios.get('/tickets/closed', {
         params: {
-          per_page: 1000,
-          status: 3, // Filter for closed status on backend
+          page: currentPage,
+          per_page: perPage,
+          search: searchTerm,
           customer_id: filters.customerId !== 'all' ? filters.customerId : null,
           agent_id: filters.agentId !== 'all' ? filters.agentId : null,
+          start_date: filters.startDate || null,
+          end_date: filters.endDate || null,
         },
       });
 
-      // All tickets returned are already closed (filtered by backend)
-      let closedTickets = response.data.data || [];
-      
-      // Apply date filters if provided
-      if (filters.startDate) {
-        closedTickets = closedTickets.filter((ticket: Ticket) => {
-          const ticketDate = new Date(ticket.closed_time || ticket.updated_at);
-          const startDate = new Date(filters.startDate);
-          return ticketDate >= startDate;
-        });
-      }
-      
-      if (filters.endDate) {
-        closedTickets = closedTickets.filter((ticket: Ticket) => {
-          const ticketDate = new Date(ticket.closed_time || ticket.updated_at);
-          const endDate = new Date(filters.endDate);
-          endDate.setHours(23, 59, 59, 999); // Include the entire end date
-          return ticketDate <= endDate;
-        });
-      }
-      
+      // All tickets returned are already closed and filtered by backend
+      const closedTickets = response.data.data || [];
       setTickets(closedTickets);
+
+      // Set pagination data
+      setTotalPages(response.data.last_page || 1);
+      setTotalItems(response.data.total || 0);
+      setCurrentPage(response.data.current_page || 1);
     } catch (error) {
       console.error('Error fetching closed tickets:', error);
+      toast.error('Failed to fetch closed tickets');
     } finally {
       setLoading(false);
     }
   };
 
   const handleFilter = () => {
+    setCurrentPage(1); // Reset to first page when filtering
     fetchClosedTickets();
   };
 
-  const handleClear = async () => {
+  const handleClear = () => {
     // Reset filters to default values
     const defaultFilters = {
       startDate: '',
@@ -174,27 +176,18 @@ export default function ClosedTickets() {
       agentId: 'all',
     };
     setFilters(defaultFilters);
-    
-    // Fetch all closed tickets without filters
-    setLoading(true);
-    try {
-      const response = await axios.get('/tickets', {
-        params: {
-          per_page: 1000,
-        },
-      });
+    setSearchTerm('');
+    setCurrentPage(1);
+    // fetchClosedTickets will be called automatically by useEffect
+  };
 
-      // Filter tickets to show only those with status = 3 (closed)
-      const closedTickets = response.data.data?.filter((ticket: Ticket) => 
-        ticket.status === 3 || ticket.ticketStatus?.id === 3
-      ) || [];
-      
-      setTickets(closedTickets);
-    } catch (error) {
-      console.error('Error fetching closed tickets:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handlePerPageChange = (value: string) => {
+    setPerPage(value);
+    setCurrentPage(1); // Reset to first page when changing per page
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   const handleReopenTicket = async (ticketId: number) => {
@@ -337,93 +330,221 @@ export default function ClosedTickets() {
           </div>
         </div>
 
-        {/* Tickets List */}
-        <div className="px-4 sm:px-6 mt-4 space-y-3 pb-6">
-          {loading ? (
-            <div className="bg-white rounded-lg p-8 text-center">
-              <div className="text-gray-500">Loading closed tickets...</div>
+        {/* Tickets List - Single Card */}
+        <div className="px-4 sm:px-6 mt-4 pb-6">
+          <div className="bg-white rounded-lg shadow-sm">
+            {/* Show Entries and Search */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Show</span>
+                  <Select value={perPage} onValueChange={handlePerPageChange}>
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-gray-600">entries</span>
+                </div>
+
+                <div className="w-full sm:w-auto">
+                  <Input
+                    type="text"
+                    placeholder="Search tickets..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full sm:w-64"
+                  />
+                </div>
+              </div>
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="bg-white rounded-lg p-8 text-center">
-              <div className="text-gray-500">No closed tickets found</div>
-            </div>
-          ) : (
-            tickets.map((ticket) => (
-              <div key={ticket.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <span className="text-sm sm:text-base text-blue-600 font-medium">
-                        Ticket ID : #{ticket.id} - {ticket.issue}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-600 hidden sm:inline">:</span>
-                        <span className="text-red-600 text-xs sm:text-sm">Closed</span>
+
+            {/* Tickets Content */}
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="text-gray-500">Loading closed tickets...</div>
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-gray-500">No closed tickets found</div>
+              </div>
+            ) : (
+              <div className="p-2">
+                {tickets.map((ticket, index) => (
+                  <div
+                    key={ticket.id}
+                    className="bg-white hover:bg-gray-50 transition-colors"
+                    style={{
+                      margin: '7px 7px 10px 7px',
+                      border: '1px solid #e4e4e4',
+                      borderRadius: '10px',
+                      padding: '16px'
+                    }}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <span className="text-sm sm:text-base text-blue-600 font-medium">
+                            Ticket ID : #{ticket.id} - {ticket.issue}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-600 hidden sm:inline">:</span>
+                            <span className="text-red-600 text-xs sm:text-sm">Closed</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-3 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">Created: {formatDateTime(ticket.created_at)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">Closed: {formatDateTime(ticket.closed_time || ticket.updated_at)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-3 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">Created: {formatDateTime(ticket.created_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">Closed: {formatDateTime(ticket.closed_time || ticket.updated_at)}</span>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                        <div className="text-sm font-medium text-gray-700">
+                          {ticket.customer?.name || 'Unknown'}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-600 hover:bg-red-50 flex-1 sm:flex-initial text-xs sm:text-sm"
+                            onClick={() => handleReopenTicket(ticket.id)}
+                          >
+                            <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                            Reopen
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="text-gray-600 border-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-600 h-8 w-8"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="w-[90%] sm:w-full max-w-lg mx-auto">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the ticket
+                                  with ID #{ticket.id}.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteTicket(ticket.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                    <div className="text-sm font-medium text-gray-700">
-                      {ticket.customer?.name || 'Unknown'}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-600 hover:bg-red-50 flex-1 sm:flex-initial text-xs sm:text-sm"
-                        onClick={() => handleReopenTicket(ticket.id)}
-                      >
-                        <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                        Reopen
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && tickets.length > 0 && (
+              <div className="border-t border-gray-200 p-4">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <div className="text-sm text-gray-600 text-center sm:text-left">
+                    Showing {tickets.length === 0 ? 0 : ((currentPage - 1) * parseInt(perPage)) + 1} to{' '}
+                    {Math.min(currentPage * parseInt(perPage), totalItems)} of {totalItems} entries
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8"
+                    >
+                      <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+
+                    {totalPages <= 5 ? (
+                      // Show all pages if 5 or fewer
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className="h-8 w-8 hidden sm:inline-flex"
+                        >
+                          {page}
+                        </Button>
+                      ))
+                    ) : (
+                      // Show pagination with ellipsis for more than 5 pages
+                      Array.from({ length: 5 }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
                           <Button
-                            variant="outline"
-                            size="icon"
-                            className="text-gray-600 border-gray-600 hover:bg-red-50 hover:text-red-600 hover:border-red-600 h-8 w-8"
+                            key={i}
+                            variant={pageNum === currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            className="h-8 w-8 hidden sm:inline-flex"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {pageNum}
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="w-[90%] sm:w-full max-w-lg mx-auto">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the ticket
-                              with ID #{ticket.id}.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteTicket(ticket.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                        );
+                      })
+                    )}
+
+                    <span className="text-sm text-gray-600 sm:hidden">
+                      {currentPage} / {totalPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-1" />
+                    </Button>
                   </div>
                 </div>
               </div>
-            ))
-          )}
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

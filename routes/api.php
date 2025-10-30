@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/agent-dashboard-stats', [AgentDashboardController::class, 'getStats']);
     
     // Ticket routes
+    Route::get('/tickets/closed', [TicketController::class, 'closedTickets']);
     Route::get('/tickets/trashed', [TicketController::class, 'trashed']);
     Route::put('/tickets/{ticket}/restore', [TicketController::class, 'restore']);
     Route::put('/tickets/{ticket}/verify', [TicketController::class, 'verifyTicket']);

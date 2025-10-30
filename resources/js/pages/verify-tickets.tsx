@@ -12,13 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
+import {
   Filter,
   CheckCircle,
   Calendar,
   User,
   Home,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import VerifyTicketModal from '@/components/VerifyTicketModal';
@@ -83,14 +84,24 @@ export default function VerifyTickets() {
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<{ id: number; issue: string } | null>(null);
 
+  // Pagination and search states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [perPage, setPerPage] = useState('10');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [totalItems, setTotalItems] = useState(0);
+
   useEffect(() => {
-    fetchVerifyTickets();
     fetchCustomers();
     // Only fetch agents if user is admin (role_id = 1)
     if (user?.role_id === 1) {
       fetchAgents();
     }
   }, []);
+
+  useEffect(() => {
+    fetchVerifyTickets();
+  }, [currentPage, perPage, searchTerm]);
 
   const fetchCustomers = async () => {
     try {
@@ -118,49 +129,42 @@ export default function VerifyTickets() {
     try {
       const response = await axios.get('/tickets', {
         params: {
-          per_page: 1000,
+          page: currentPage,
+          per_page: perPage,
+          search: searchTerm,
           status: 4, // Filter for verify/resolved status on backend
           customer_id: filters.customerId !== 'all' ? filters.customerId : null,
           agent_id: filters.agentId !== 'all' ? filters.agentId : null,
+          start_date: filters.startDate || null,
+          end_date: filters.endDate || null,
         },
       });
 
       // Filter tickets to show only those that are not yet verified (verified_at is null)
-      let verifyTickets = response.data.data?.filter((ticket: Ticket) =>
+      const verifyTickets = response.data.data?.filter((ticket: Ticket) =>
         !ticket.verified_at
       ) || [];
-      
-      // Apply date filters if provided
-      if (filters.startDate) {
-        verifyTickets = verifyTickets.filter((ticket: Ticket) => {
-          const ticketDate = new Date(ticket.updated_at);
-          const startDate = new Date(filters.startDate);
-          return ticketDate >= startDate;
-        });
-      }
-      
-      if (filters.endDate) {
-        verifyTickets = verifyTickets.filter((ticket: Ticket) => {
-          const ticketDate = new Date(ticket.updated_at);
-          const endDate = new Date(filters.endDate);
-          endDate.setHours(23, 59, 59, 999); // Include the entire end date
-          return ticketDate <= endDate;
-        });
-      }
-      
+
       setTickets(verifyTickets);
+
+      // Set pagination data
+      setTotalPages(response.data.last_page || 1);
+      setTotalItems(response.data.total || 0);
+      setCurrentPage(response.data.current_page || 1);
     } catch (error) {
       console.error('Error fetching verify tickets:', error);
+      toast.error('Failed to fetch verify tickets');
     } finally {
       setLoading(false);
     }
   };
 
   const handleFilter = () => {
+    setCurrentPage(1); // Reset to first page when filtering
     fetchVerifyTickets();
   };
 
-  const handleClear = async () => {
+  const handleClear = () => {
     // Reset filters to default values
     const defaultFilters = {
       startDate: '',
@@ -169,28 +173,18 @@ export default function VerifyTickets() {
       agentId: 'all',
     };
     setFilters(defaultFilters);
-    
-    // Fetch all verify tickets without filters
-    setLoading(true);
-    try {
-      const response = await axios.get('/tickets', {
-        params: {
-          per_page: 1000,
-          status: 4, // Filter for verify/resolved status on backend
-        },
-      });
+    setSearchTerm('');
+    setCurrentPage(1);
+    // fetchVerifyTickets will be called automatically by useEffect
+  };
 
-      // Filter tickets to show only those that are not yet verified (verified_at is null)
-      const verifyTickets = response.data.data?.filter((ticket: Ticket) => 
-        !ticket.verified_at
-      ) || [];
-      
-      setTickets(verifyTickets);
-    } catch (error) {
-      console.error('Error fetching verify tickets:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handlePerPageChange = (value: string) => {
+    setPerPage(value);
+    setCurrentPage(1); // Reset to first page when changing per page
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   const handleVerifyClick = (ticket: Ticket) => {
@@ -317,64 +311,192 @@ export default function VerifyTickets() {
           </div>
         </div>
 
-        {/* Tickets List */}
-        <div className="px-4 sm:px-6 mt-4 space-y-3 pb-6">
-          {loading ? (
-            <div className="bg-white rounded-lg p-8 text-center">
-              <div className="text-gray-500">Loading tickets to verify...</div>
+        {/* Tickets List - Single Card */}
+        <div className="px-4 sm:px-6 mt-4 pb-6">
+          <div className="bg-white rounded-lg shadow-sm">
+            {/* Show Entries and Search */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Show</span>
+                  <Select value={perPage} onValueChange={handlePerPageChange}>
+                    <SelectTrigger className="w-[70px] h-8">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="25">25</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-gray-600">entries</span>
+                </div>
+
+                <div className="w-full sm:w-auto">
+                  <Input
+                    type="text"
+                    placeholder="Search tickets..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full sm:w-64"
+                  />
+                </div>
+              </div>
             </div>
-          ) : tickets.length === 0 ? (
-            <div className="bg-white rounded-lg p-8 text-center">
-              <div className="text-gray-500">No tickets pending verification found</div>
-            </div>
-          ) : (
-            tickets.map((ticket) => (
-              <div key={ticket.id} className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <span className="text-sm sm:text-base text-blue-600 font-medium">
-                        Ticket ID : #{ticket.id} - {ticket.issue}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-600 hidden sm:inline">:</span>
-                        <span className="text-yellow-600 text-xs sm:text-sm">Pending Verification</span>
+
+            {/* Tickets Content */}
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="text-gray-500">Loading tickets to verify...</div>
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-gray-500">No tickets pending verification found</div>
+              </div>
+            ) : (
+              <div className="p-2">
+                {tickets.map((ticket, index) => (
+                  <div
+                    key={ticket.id}
+                    className="bg-white hover:bg-gray-50 transition-colors"
+                    style={{
+                      margin: '7px 7px 10px 7px',
+                      border: '1px solid #e4e4e4',
+                      borderRadius: '10px',
+                      padding: '16px'
+                    }}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                          <span className="text-sm sm:text-base text-blue-600 font-medium">
+                            Ticket ID : #{ticket.id} - {ticket.issue}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-gray-600 hidden sm:inline">:</span>
+                            <span className="text-yellow-600 text-xs sm:text-sm">Pending Verification</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-3 text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">Created: {formatDateTime(ticket.created_at)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">Resolved: {formatDateTime(ticket.updated_at)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-3 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">Created: {formatDateTime(ticket.created_at)}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">Resolved: {formatDateTime(ticket.updated_at)}</span>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                        <div className="text-sm font-medium text-gray-700">
+                          {ticket.customer?.name || 'Unknown'}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-green-600 border-green-600 hover:bg-green-50 flex-1 sm:flex-initial text-xs sm:text-sm"
+                            onClick={() => handleVerifyClick(ticket)}
+                          >
+                            <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                            Verify
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                    <div className="text-sm font-medium text-gray-700">
-                      {ticket.customer?.name || 'Unknown'}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-green-600 border-green-600 hover:bg-green-50 flex-1 sm:flex-initial text-xs sm:text-sm"
-                        onClick={() => handleVerifyClick(ticket)}
-                      >
-                        <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                        Verify
-                      </Button>
-                    </div>
+                ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && tickets.length > 0 && (
+              <div className="border-t border-gray-200 p-4">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <div className="text-sm text-gray-600 text-center sm:text-left">
+                    Showing {tickets.length === 0 ? 0 : ((currentPage - 1) * parseInt(perPage)) + 1} to{' '}
+                    {Math.min(currentPage * parseInt(perPage), totalItems)} of {totalItems} entries
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="h-8"
+                    >
+                      <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+
+                    {totalPages <= 5 ? (
+                      // Show all pages if 5 or fewer
+                      Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(page)}
+                          className="h-8 w-8 hidden sm:inline-flex"
+                        >
+                          {page}
+                        </Button>
+                      ))
+                    ) : (
+                      // Show pagination with ellipsis for more than 5 pages
+                      Array.from({ length: 5 }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <Button
+                            key={i}
+                            variant={pageNum === currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            className="h-8 w-8 hidden sm:inline-flex"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })
+                    )}
+
+                    <span className="text-sm text-gray-600 sm:hidden">
+                      {currentPage} / {totalPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="h-8"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-1" />
+                    </Button>
                   </div>
                 </div>
               </div>
-            ))
-          )}
+            )}
+          </div>
         </div>
       </div>
 
