@@ -107,7 +107,8 @@ export function Register() {
       const payload = {
         name: formData.name.trim(),
         email: formData.email.trim(),
-        contact_number: formData.mobile ? formData.countryCode + formData.mobile : null,
+        country_code:formData.countryCode ? formData.countryCode : null,
+        contact_number: formData.mobile ? formData.mobile : null,
         company_name: formData.companyName.trim() || null,
         issue: formData.issue.trim(),
         branch_id: branchId // Include branch_id from URL

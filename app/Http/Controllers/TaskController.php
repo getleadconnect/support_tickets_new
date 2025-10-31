@@ -12,9 +12,29 @@ use App\Models\TaskNotes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Services\WhatsappApiService;
 
 class TaskController extends Controller
 {
+
+    use WhatsappApiService;
+
+    /* To send ticket issue - contirm message to customer */
+
+    public function sendMessage()
+    {
+        //------send partner to crm-----
+        $data=[
+            "user_mobile"=>"919995338385",
+            "ticket_id"=>"TKT345678",
+            "branch_mobile"=>"919876543210"
+        ];
+		$send_response=$this->sendServiceRequestConfirmMessage($data);
+        return response()->json($send_response);
+        //------------------------------
+    }
+
+
     /**
      * Display a listing of tasks with filters and pagination
      */

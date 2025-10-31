@@ -466,7 +466,6 @@ export default function Settings() {
   const [deletingMessage, setDeletingMessage] = useState<MessageSetting | null>(null);
   const [viewingMessage, setViewingMessage] = useState<MessageSetting | null>(null);
   const [searchTermMessages, setSearchTermMessages] = useState('');
-  const [statusFilterMessages, setStatusFilterMessages] = useState<string>('all');
   const [messageTypeFilter, setMessageTypeFilter] = useState<string>('all');
   const [currentPageMessages, setCurrentPageMessages] = useState(1);
   const [totalPagesMessages, setTotalPagesMessages] = useState(1);
@@ -2275,25 +2274,17 @@ export default function Settings() {
         per_page: perPageMessages,
       };
 
-      if (searchTermMessages) {
-        params.search = searchTermMessages;
-      }
-
-      if (statusFilterMessages !== 'all') {
-        params.status = statusFilterMessages === 'active' ? 1 : 0;
-      }
-
       if (messageTypeFilter !== 'all') {
         params.message_type = messageTypeFilter;
       }
 
       const response = await axios.get('/message-settings', { params });
-      
+
       // Handle the response data
       const data = response.data.data || response.data || [];
       setMessageSettings(Array.isArray(data) ? data : []);
       setTotalPagesMessages(response.data.last_page || 1);
-      
+
       console.log('Fetched notification settings:', data);
     } catch (error: any) {
       console.error('Error fetching notification settings:', error);
@@ -2310,69 +2301,100 @@ export default function Settings() {
 
   const handleSaveNotificationSetting = async () => {
     // Validate required fields
-    if (!messageFormData.message_type) {
-      toast.error('Please select a message type');
+    if (!messageFormData.vendor_name || !messageFormData.vendor_name.trim()) {
+      toast.error('Please enter a vendor name');
+      return;
+    }
+
+    if (!messageFormData.whatsapp_api || !messageFormData.whatsapp_api.trim()) {
+      toast.error('Please enter a WhatsApp API URL');
       return;
     }
 
     try {
       const dataToSubmit: any = { ...messageFormData };
-      
+
       // Convert status to number
       dataToSubmit.status = dataToSubmit.status ? 1 : 0;
 
-      // If editing and token/secret_key are empty, don't send them
-      // This tells the backend to keep the existing values
+      // If editing and api_token is empty, don't send it
+      // This tells the backend to keep the existing value
       if (editingMessage) {
-        if (!dataToSubmit.token || dataToSubmit.token.trim() === '') {
-          delete dataToSubmit.token;
-        }
-        if (!dataToSubmit.secret_key || dataToSubmit.secret_key.trim() === '') {
-          delete dataToSubmit.secret_key;
+        if (!dataToSubmit.api_token || dataToSubmit.api_token.trim() === '') {
+          delete dataToSubmit.api_token;
         }
       }
 
       if (editingMessage) {
-        // Update existing notification setting
+        // Update existing WhatsApp setting
         await axios.put(`/message-settings/${editingMessage.id}`, dataToSubmit);
-        toast.success('Notification setting updated successfully');
+        toast.success('WhatsApp setting updated successfully');
       } else {
-        // Create new notification setting
-        await axios.post('/message-settings', dataToSubmit);
-        toast.success('Notification setting created successfully');
+        // Check if a record with the same vendor_name or whatsapp_api already exists
+        const existingRecord = messageSettings.find(
+          (msg) =>
+            msg.vendor_name?.toLowerCase() === dataToSubmit.vendor_name.toLowerCase() ||
+            msg.whatsapp_api?.toLowerCase() === dataToSubmit.whatsapp_api.toLowerCase()
+        );
+
+        if (existingRecord) {
+          // Update existing record instead of creating new
+          await axios.put(`/message-settings/${existingRecord.id}`, dataToSubmit);
+          toast.success('WhatsApp setting updated successfully (existing record found)');
+        } else {
+          // Create new WhatsApp setting
+          await axios.post('/message-settings', dataToSubmit);
+          toast.success('WhatsApp setting created successfully');
+        }
       }
-      
+
       // Refresh the list
       await fetchNotificationSettings();
-      
+
       // Close modal and reset form
       setMessageModalOpen(false);
       setEditingMessage(null);
       setMessageFormData({
-        message_type: '',
+        vendor_name: '',
         whatsapp_api: '',
-        token: '',
-        secret_key: '',
-        template_name: '',
-        template_text: '',
+        api_token: '',
         status: true,
       });
     } catch (error: any) {
-      console.error('Error saving notification setting:', error);
+      console.error('Error saving WhatsApp setting:', error);
       if (error.response?.data?.errors) {
         const firstError = Object.values(error.response.data.errors)[0];
         toast.error(Array.isArray(firstError) ? firstError[0] : firstError);
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
       } else {
-        toast.error('Failed to save notification setting');
+        toast.error('Failed to save WhatsApp setting');
       }
+    }
+  };
+
+  const handleToggleStatus = async (message: any) => {
+    try {
+      const newStatus = !message.status;
+      await axios.put(`/message-settings/${message.id}`, {
+        vendor_name: message.vendor_name,
+        whatsapp_api: message.whatsapp_api,
+        status: newStatus ? 1 : 0
+      });
+
+      toast.success(`Status changed to ${newStatus ? 'Active' : 'Inactive'}`);
+
+      // Refresh the list
+      await fetchNotificationSettings();
+    } catch (error: any) {
+      console.error('Error toggling status:', error);
+      toast.error('Failed to update status');
     }
   };
 
   const handleDeleteNotificationSetting = async () => {
     if (!deletingMessage) return;
-    
+
     try {
       await axios.delete(`/message-settings/${deletingMessage.id}`);
       toast.success('Notification setting deleted successfully');
@@ -2392,7 +2414,7 @@ export default function Settings() {
     if (tabElement) {
       fetchNotificationSettings();
     }
-  }, [currentPageMessages, perPageMessages, searchTermMessages, statusFilterMessages, messageTypeFilter]);
+  }, [currentPageMessages, perPageMessages, messageTypeFilter]);
 
   return (
     <DashboardLayout title="Settings">
@@ -2459,11 +2481,11 @@ export default function Settings() {
                 <QrCode className="h-4 w-4" />
                 QR Codes
               </TabsTrigger>
-              {/* Show Notification Settings tab only for role_id=1 (Admin) */}
+              {/* Show Whatsapp Settings tab only for role_id=1 (Admin) */}
               {currentUser?.role_id === 1 && (
                 <TabsTrigger value="notification-settings" className="w-full justify-start text-sm px-3 py-2 mt-[5px] data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:shadow-sm flex items-center gap-2">
                   <MessageCircle className="h-4 w-4" />
-                  Notification Settings
+                  Whatsapp Settings
                 </TabsTrigger>
               )}
             </TabsList>
@@ -2519,11 +2541,11 @@ export default function Settings() {
                 <QrCode className="h-3 w-3" />
                 QR Codes
               </TabsTrigger>
-              {/* Show Notification Settings tab only for role_id=1 (Admin) */}
+              {/* Show Whatsapp Settings tab only for role_id=1 (Admin) */}
               {currentUser?.role_id === 1 && (
                 <TabsTrigger value="notification-settings" className="min-w-fit px-3 py-2 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:shadow-sm flex items-center gap-1 text-xs">
                   <MessageCircle className="h-3 w-3" />
-                  Notifications
+                  Whatsapp
                 </TabsTrigger>
               )}
             </TabsList>
@@ -5280,8 +5302,8 @@ export default function Settings() {
             <TabsContent value="notification-settings" className="mt-1.5">
               <div className="space-y-4">
                 <div className="mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">Notification Settings</h3>
-                  <p className="text-sm text-gray-500 mt-1">Manage your messaging templates and API configurations</p>
+                  <h3 className="text-xl font-semibold text-gray-900">Whatsapp Settings</h3>
+                  <p className="text-sm text-gray-500 mt-1">Manage your WhatsApp messaging templates and API configurations</p>
                 </div>
 
                 {/* Filters and Search */}
@@ -5290,53 +5312,28 @@ export default function Settings() {
                     <div className="relative flex-1 sm:flex-initial">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 sm:h-4 w-3 sm:w-4 text-gray-400" />
                       <Input
-                        placeholder="Search notifications..."
+                        placeholder="Search WhatsApp settings..."
                         value={searchTermMessages}
                         onChange={(e) => { setSearchTermMessages(e.target.value); setCurrentPageMessages(1); }}
                         className="pl-8 sm:pl-9 pr-3 h-8 sm:h-9 w-full sm:w-[250px] text-sm"
                       />
                     </div>
-                    <Select value={messageTypeFilter} onValueChange={(value) => { setMessageTypeFilter(value); setCurrentPageMessages(1); }}>
-                      <SelectTrigger className="w-full sm:w-[150px] h-8 sm:h-9">
-                        <SelectValue placeholder="All Types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="ticket_confirmation">Ticket Confirmation</SelectItem>
-                        <SelectItem value="issue_completed">Issue Completed</SelectItem>
-                        <SelectItem value="item_delivered">Item Delivered</SelectItem>
-                        <SelectItem value="payment_confirmation">Payment Confirmation</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={statusFilterMessages} onValueChange={(value) => { setStatusFilterMessages(value); setCurrentPageMessages(1); }}>
-                      <SelectTrigger className="w-full sm:w-[120px] h-8 sm:h-9">
-                        <SelectValue placeholder="All Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
-                  <Button 
-                    className="bg-black hover:bg-gray-800 text-white text-xs sm:text-sm h-8 sm:h-9" 
+                  <Button
+                    className="bg-black hover:bg-gray-800 text-white text-xs sm:text-sm h-8 sm:h-9"
                     onClick={() => {
                       setEditingMessage(null);
                       setMessageFormData({
-                        message_type: '',
+                        vendor_name: '',
                         whatsapp_api: '',
-                        token: '',
-                        secret_key: '',
-                        template_name: '',
-                        template_text: '',
+                        api_token: '',
                         status: true,
                       });
                       setMessageModalOpen(true);
                     }}
                   >
                     <Plus className="mr-1 sm:mr-2 h-3 sm:h-4 w-3 sm:w-4" />
-                    Add Notification
+                    Add Settings
                   </Button>
                 </div>
 
@@ -5345,10 +5342,10 @@ export default function Settings() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50 border-b border-[#e4e4e4]">
-                        <TableHead className="font-semibold text-gray-700 py-3">Message Type</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-3">Template Name</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-3">Sl No</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-3">Vendor Name</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3">WhatsApp API</TableHead>
-                        <TableHead className="font-semibold text-gray-700 py-3">Template Text</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-3">API Token</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3">Status</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3 text-center">Actions</TableHead>
                       </TableRow>
@@ -5365,69 +5362,67 @@ export default function Settings() {
                       ) : messageSettings.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={6} className="h-24 text-center">
-                            No notification settings found.
+                            No WhatsApp settings found.
                           </TableCell>
                         </TableRow>
                       ) : (
-                        messageSettings.map((message) => (
+                        messageSettings
+                          .filter((message) => {
+                            if (!searchTermMessages) return true;
+                            const searchLower = searchTermMessages.toLowerCase();
+                            return (
+                              message.vendor_name?.toLowerCase().includes(searchLower) ||
+                              message.whatsapp_api?.toLowerCase().includes(searchLower) ||
+                              message.api_token?.toLowerCase().includes(searchLower)
+                            );
+                          })
+                          .map((message, index) => (
                           <TableRow key={message.id} className="hover:bg-gray-50 border-b border-[#e4e4e4] last:border-b-0">
+                            <TableCell className="py-3">
+                              <span className="font-medium text-gray-700">
+                                {((currentPageMessages - 1) * perPageMessages) + index + 1}
+                              </span>
+                            </TableCell>
                             <TableCell className="py-3">
                               <div className="flex items-center gap-2">
                                 <MessageCircle className="h-4 w-4 text-gray-400" />
-                                <span className="font-medium capitalize">
-                                  {message.message_type.replace(/_/g, ' ')}
+                                <span className="font-medium">
+                                  {message.vendor_name || '-'}
                                 </span>
                               </div>
                             </TableCell>
-                            <TableCell className="py-3">{message.template_name || '-'}</TableCell>
                             <TableCell className="py-3">
                               {message.whatsapp_api ? (
-                                <span className="text-sm truncate max-w-[150px] block">
+                                <span className="text-sm truncate max-w-[200px] block" title={message.whatsapp_api}>
                                   {message.whatsapp_api}
                                 </span>
                               ) : '-'}
                             </TableCell>
                             <TableCell className="py-3">
-                              {message.template_text ? (
-                                <p className="text-sm text-gray-600 truncate max-w-[200px]" title={message.template_text}>
-                                  {message.template_text}
-                                </p>
+                              {message.masked_token || message.api_token ? (
+                                <span className="text-sm truncate max-w-[200px] block" title={message.masked_token || message.api_token}>
+                                  {message.masked_token || message.api_token}
+                                </span>
                               ) : '-'}
                             </TableCell>
                             <TableCell className="py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                message.status 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span
+                                onClick={() => handleToggleStatus(message)}
+                                className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-all hover:opacity-80 ${
+                                  message.status
+                                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                    : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                }`}
+                                title="Click to toggle status"
+                              >
                                 {message.status ? 'Active' : 'Inactive'}
                               </span>
                             </TableCell>
                             <TableCell className="py-3">
                               <div className="flex items-center justify-center space-x-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-8 w-8"
-                                  onClick={() => {
-                                    setEditingMessage(message);
-                                    setMessageFormData({
-                                      message_type: message.message_type,
-                                      whatsapp_api: message.whatsapp_api || '',
-                                      token: message.token || '', // Will be empty due to backend security
-                                      secret_key: message.secret_key || '', // Will be empty due to backend security
-                                      template_name: message.template_name || '',
-                                      template_text: message.template_text || '',
-                                      status: message.status,
-                                    });
-                                    setMessageModalOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="h-8 w-8"
                                   onClick={() => {
                                     setDeletingMessage(message);
@@ -5452,59 +5447,54 @@ export default function Settings() {
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                     </div>
                   ) : messageSettings.length === 0 ? (
-                    <div className="text-center text-gray-500 p-6">No notification settings found.</div>
+                    <div className="text-center text-gray-500 p-6">No WhatsApp settings found.</div>
                   ) : (
-                    messageSettings.map((message) => (
+                    messageSettings
+                      .filter((message) => {
+                        if (!searchTermMessages) return true;
+                        const searchLower = searchTermMessages.toLowerCase();
+                        return (
+                          message.vendor_name?.toLowerCase().includes(searchLower) ||
+                          message.whatsapp_api?.toLowerCase().includes(searchLower) ||
+                          message.api_token?.toLowerCase().includes(searchLower)
+                        );
+                      })
+                      .map((message, index) => (
                       <div key={message.id} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
                         <div className="flex justify-between items-start">
-                          <div className="space-y-1">
+                          <div className="space-y-1 flex-1">
                             <div className="flex items-center gap-2">
+                              <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-2 py-1 rounded">
+                                #{((currentPageMessages - 1) * perPageMessages) + index + 1}
+                              </span>
                               <MessageCircle className="h-4 w-4 text-gray-400" />
-                              <h4 className="font-semibold text-gray-900 capitalize">
-                                {message.message_type.replace(/_/g, ' ')}
+                              <h4 className="font-semibold text-gray-900">
+                                {message.vendor_name || 'No Vendor Name'}
                               </h4>
                             </div>
-                            {message.template_name && (
-                              <p className="text-sm text-gray-600">{message.template_name}</p>
+                            {message.whatsapp_api && (
+                              <p className="text-sm text-gray-600 break-all">{message.whatsapp_api}</p>
+                            )}
+                            {(message.masked_token || message.api_token) && (
+                              <p className="text-xs font-mono text-gray-500">
+                                Token: {message.masked_token || '••••••••'}
+                              </p>
                             )}
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            message.status 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span
+                            onClick={() => handleToggleStatus(message)}
+                            className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-all hover:opacity-80 ${
+                              message.status
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                            title="Click to toggle status"
+                          >
                             {message.status ? 'Active' : 'Inactive'}
                           </span>
                         </div>
-                        
-                        {message.template_text && (
-                          <div className="text-sm text-gray-600">
-                            <p className="truncate">{message.template_text}</p>
-                          </div>
-                        )}
-                        
+
                         <div className="flex gap-2 pt-2 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => {
-                              setEditingMessage(message);
-                              setMessageFormData({
-                                message_type: message.message_type,
-                                whatsapp_api: message.whatsapp_api || '',
-                                token: message.token || '', // Will be empty due to backend security
-                                secret_key: message.secret_key || '', // Will be empty due to backend security
-                                template_name: message.template_name || '',
-                                template_text: message.template_text || '',
-                                status: message.status,
-                              });
-                              setMessageModalOpen(true);
-                            }}
-                          >
-                            <Edit className="h-3 w-3 mr-1" />
-                            Edit
-                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
@@ -5512,7 +5502,7 @@ export default function Settings() {
                               setDeletingMessage(message);
                               setDeleteMessageModalOpen(true);
                             }}
-                            className="text-red-600 hover:text-red-700"
+                            className="flex-1 text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="h-3 w-3 mr-1" />
                             Delete
@@ -6843,44 +6833,25 @@ export default function Settings() {
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>
-                {editingMessage ? 'Edit Notification Setting' : 'Add Notification Setting'}
+                {editingMessage ? 'Edit Whatsapp Setting' : 'Add Whatsapp Setting'}
               </DialogTitle>
               <DialogDescription>
-                Configure notification templates and API settings for automated messaging.
+                Configure WhatsApp templates and API settings for automated messaging.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="message-type">Message Type *</Label>
-                  <Select 
-                    value={messageFormData.message_type} 
-                    onValueChange={(value) => setMessageFormData({ ...messageFormData, message_type: value })}
-                  >
-                    <SelectTrigger id="message-type">
-                      <SelectValue placeholder="Select message type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ticket_confirmation">Ticket Confirmation</SelectItem>
-                      <SelectItem value="issue_completed">Issue Completed</SelectItem>
-                      <SelectItem value="item_delivered">Item Delivered</SelectItem>
-                      <SelectItem value="payment_confirmation">Payment Confirmation</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="template-name">Template Name</Label>
-                  <Input
-                    id="template-name"
-                    value={messageFormData.template_name}
-                    onChange={(e) => setMessageFormData({ ...messageFormData, template_name: e.target.value })}
-                    placeholder="Enter template name"
-                  />
-                </div>
-              </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="whatsapp-api">WhatsApp API URL</Label>
+                <Label htmlFor="vendor-name">Vendor Name *</Label>
+                <Input
+                  id="vendor-name"
+                  value={messageFormData.vendor_name}
+                  onChange={(e) => setMessageFormData({ ...messageFormData, vendor_name: e.target.value })}
+                  placeholder="Enter vendor name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp-api">WhatsApp API URL *</Label>
                 <Input
                   id="whatsapp-api"
                   value={messageFormData.whatsapp_api}
@@ -6888,7 +6859,7 @@ export default function Settings() {
                   placeholder="https://api.whatsapp.com/..."
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="token">
                   API Token
@@ -6901,8 +6872,8 @@ export default function Settings() {
                 <Input
                   id="token"
                   type="text"
-                  value={messageFormData.token}
-                  onChange={(e) => setMessageFormData({ ...messageFormData, token: e.target.value })}
+                  value={messageFormData.api_token}
+                  onChange={(e) => setMessageFormData({ ...messageFormData, api_token: e.target.value })}
                   placeholder={editingMessage ? "Leave blank to keep existing token" : "Enter API token"}
                 />
                 {editingMessage && (
@@ -6911,45 +6882,7 @@ export default function Settings() {
                   </p>
                 )}
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="secret-key">
-                  Secret Key
-                  {editingMessage?.masked_secret_key && (
-                    <span className="ml-2 text-xs text-gray-500">
-                      (Current: {editingMessage.masked_secret_key})
-                    </span>
-                  )}
-                </Label>
-                <Input
-                  id="secret-key"
-                  type="text"
-                  value={messageFormData.secret_key}
-                  onChange={(e) => setMessageFormData({ ...messageFormData, secret_key: e.target.value })}
-                  placeholder={editingMessage ? "Leave blank to keep existing secret key" : "Enter secret key"}
-                />
-                {editingMessage && (
-                  <p className="text-xs text-gray-500">
-                    For security, the current secret key is hidden. Enter a new value to update, or leave blank to keep existing.
-                  </p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="template-text">Template Text</Label>
-                <Textarea
-                  id="template-text"
-                  value={messageFormData.template_text}
-                  onChange={(e) => setMessageFormData({ ...messageFormData, template_text: e.target.value })}
-                  placeholder="Enter message template text..."
-                  rows={4}
-                  className="resize-none"
-                />
-                <p className="text-xs text-gray-500">
-                  Use variables like {'{ticket_id}'}, {'{customer_name}'}, {'{status}'} in your template
-                </p>
-              </div>
-              
+
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="message-status"
@@ -6957,7 +6890,7 @@ export default function Settings() {
                   onCheckedChange={(checked) => setMessageFormData({ ...messageFormData, status: checked as boolean })}
                 />
                 <Label htmlFor="message-status" className="cursor-pointer">
-                  Active (Enable this notification)
+                  Active (Enable this WhatsApp API)
                 </Label>
               </div>
             </div>
@@ -6965,11 +6898,11 @@ export default function Settings() {
               <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleSaveNotificationSetting()}
                 className="bg-black hover:bg-gray-800"
               >
-                {editingMessage ? 'Update' : 'Add'} Notification
+                {editingMessage ? 'Update' : 'Add'} Setting
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -6979,9 +6912,9 @@ export default function Settings() {
         <AlertDialog open={deleteMessageModalOpen} onOpenChange={setDeleteMessageModalOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Notification Setting</AlertDialogTitle>
+              <AlertDialogTitle>Delete Whatsapp Setting</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the notification setting for "{deletingMessage?.message_type.replace(/_/g, ' ')}"? 
+                Are you sure you want to delete the WhatsApp setting for "{deletingMessage?.vendor_name || 'this vendor'}"?
                 This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>

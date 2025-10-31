@@ -18,9 +18,13 @@ use App\Models\Notification;
 use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
 use Auth;
+use App\Services\WhatsappApiService;
+use Log;
+
 
 class TicketController extends Controller
 {
+    use WhatsappApiService;
     
     /**
      * Display a listing of the resource.
@@ -342,6 +346,28 @@ class TicketController extends Controller
             ]);
         }
 
+          /* ---- To send whatsapp message ----- service request -------------- */
+        
+            try
+            {
+                $customer=Customer::where('id',$ticket->customer_id)->first();
+
+                $data=[
+                    "user_mobile"=>$customer->country_code.$customer->mobile,
+                    "tracking_id"=>$ticket->tracking_number,
+                    "template_id"=>"258014" //wabis id
+                ];
+
+                $send_response=$this->sendServiceMessages($data);
+                \Log::info($send_response);
+            }
+            catch (\Exception $e) {
+                \Log::info($e->getMessage());
+            }
+        
+          //-------------------------------------------------------------------
+
+
         return response()->json([
             'message' => 'Ticket created successfully',
             'ticket' => $ticket->load(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'activity.user', 'activity.status', 'activity.priority']),
@@ -454,8 +480,6 @@ class TicketController extends Controller
             $oldStatus = $ticket->ticketStatus()->where('id', $originalStatus)->first();
             $newStatus = $ticket->ticketStatus()->where('id', $validated['status'])->first();
 
-            
-                           
             $this->createActivity(
                 $ticket,
                 'Ticket Status Changed',
@@ -590,6 +614,51 @@ class TicketController extends Controller
                 );
             }
         }
+
+        if (isset($validated['status']) && $validated['status']==4) {
+
+          /* ---- To send whatsapp message ----- completed message --------- */
+           try
+            {
+                $customer=Customer::where('id',$ticket->customer_id)->first();
+                $data=[
+                    "user_mobile"=>$customer->country_code.$customer->mobile,
+                    "tracking_id"=>$ticket->tracking_number,
+                    "template_id"=>"258016" //wabis id
+                  ];
+
+                $send_response=$this->sendServiceMessages($data);
+                \Log::info($send_response);
+            }
+            catch (\Exception $e) {
+                \Log::info($e->getMessage());
+            }
+        
+          //-------------------------------------------------------------------
+        }
+
+        if (isset($validated['status']) && $validated['status']==3) {
+
+         /* ---- To send whatsapp message ----- delivered message --------- */
+           try
+            {
+                $customer=Customer::where('id',$ticket->customer_id)->first();
+                $data=[
+                    "user_mobile"=>$customer->country_code.$customer->mobile,
+                    "tracking_id"=>$ticket->tracking_number,
+                    "template_id"=>"258020" //wabis id
+                  ];
+
+                $send_response=$this->sendServiceMessages($data);
+                \Log::info($send_response);
+            }
+            catch (\Exception $e) {
+                \Log::info($e->getMessage());
+            }
+        
+          //-------------------------------------------------------------------
+        }
+
 
         return response()->json([
             'message' => 'Ticket updated successfully',

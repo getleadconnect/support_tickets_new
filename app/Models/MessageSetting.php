@@ -10,12 +10,9 @@ class MessageSetting extends Model
     use HasFactory;
 
     protected $fillable = [
-        'message_type',
+        'vendor_name',
         'whatsapp_api',
-        'token',
-        'secret_key',
-        'template_name',
-        'template_text',
+        'api_token',
         'status',
         'created_by'
     ];
@@ -26,27 +23,15 @@ class MessageSetting extends Model
         'updated_at' => 'datetime',
     ];
 
-    protected $hidden = [
-        'secret_key',
-        'token'
-    ];
 
-    protected $appends = ['masked_token', 'masked_secret_key'];
+    protected $appends = ['masked_token'];
 
     public function getMaskedTokenAttribute()
     {
-        if (!$this->token) return null;
-        $length = strlen($this->token);
+        if (!$this->api_token) return null;
+        $length = strlen($this->api_token);
         if ($length <= 8) return str_repeat('*', $length);
-        return substr($this->token, 0, 4) . str_repeat('*', $length - 8) . substr($this->token, -4);
-    }
-
-    public function getMaskedSecretKeyAttribute()
-    {
-        if (!$this->secret_key) return null;
-        $length = strlen($this->secret_key);
-        if ($length <= 8) return str_repeat('*', $length);
-        return substr($this->secret_key, 0, 4) . str_repeat('*', $length - 8) . substr($this->secret_key, -4);
+        return substr($this->api_token, 0, 4) . str_repeat('*', $length - 8) . substr($this->api_token, -4);
     }
 
     public function createdBy()

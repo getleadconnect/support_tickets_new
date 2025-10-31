@@ -4,15 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Ticket;
+use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use App\Services\SimpleXLSXParser;
+use App\Services\WhatsappApiService;
+use Log;
 
 class CustomerController extends Controller
 {
+    use  WhatsappApiService;
+
     /**
      * Display a listing of the customers.
      */
@@ -239,6 +244,7 @@ public function getTicketLabels()
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
+            'country_code' => 'nullable|string|max:20',
             'contact_number' => 'nullable|string|max:20',
             'company_name' => 'nullable|string|max:255',
             'issue' => 'required|string|min:10',
@@ -257,13 +263,10 @@ public function getTicketLabels()
                 
                 // Update customer info if provided
                 if (!empty($validated['contact_number']) && empty($customer->mobile)) {
-                    if (preg_match('/^(\+\d{1,3})(.*)$/', $validated['contact_number'], $matches)) {
-                        $customer->country_code = $matches[1];
-                        $customer->mobile = $validated['contact_number'];
-                    } else {
-                        $customer->country_code = '+91';
-                        $customer->mobile = '+91' . $validated['contact_number'];
-                    }
+
+                    $customer->country_code = substr($validated['country_code'],1);
+                    $customer->mobile = $validated['contact_number'];
+
                 }
                 if (!empty($validated['company_name']) && empty($customer->company_name)) {
                     $customer->company_name = $validated['company_name'];
@@ -278,35 +281,14 @@ public function getTicketLabels()
                 $customerData = [
                     'name' => $validated['name'],
                     'email' => $validated['email'],
+                    'country_code'=>substr($validated['country_code'],1),
+                    'mobile'=>$validated['contact_number'],
                     'company_name' => $validated['company_name'] ?? null,
                     'branch_id' => $validated['branch_id'] ?? (auth()->user()->branch_id ?? null),
                     'created_by' => 1, // System user
                 ];
 
-                // Handle mobile number
-                if (!empty($validated['contact_number'])) {
-                    if (preg_match('/^(\+\d{1,3})(.*)$/', $validated['contact_number'], $matches)) {
-                        $customerData['country_code'] = $matches[1];
-                        $customerData['mobile'] = $validated['contact_number'];
-                    } else {
-                        $customerData['country_code'] = '+91';
-                        $customerData['mobile'] = '+91' . $validated['contact_number'];
-                    }
-                }
-
                 $customer = Customer::create($customerData);
-            }
-
-       
-            // Generate unique tracking number with ONS prefix
-            $lastTicket = Ticket::withTrashed()->orderBy('id', 'desc')->first();
-            $nextNumber = $lastTicket ? $lastTicket->id + 1 : 1;
-            $trackingNumber = 'ONS' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);
-            
-            // Ensure uniqueness
-            while (Ticket::withTrashed()->where('tracking_number', $trackingNumber)->exists()) {
-                $nextNumber++;
-                $trackingNumber = 'ONS' . str_pad($nextNumber, 7, '0', STR_PAD_LEFT);
             }
 
             // Set due date to day after tomorrow at 5:30 PM
@@ -317,7 +299,7 @@ public function getTicketLabels()
                 'description' => 'Issue submitted through customer registration form',
                 'customer_id' => $customer->id,
                 'created_by' => 1, // System user
-                'tracking_number' => $trackingNumber,
+                'tracking_number' => 0,
                 'slug' => Str::slug($validated['issue'] . '-' . time()),
                 'priority' => 2, // Normal priority
                 'branch_id' => $validated['branch_id'] ?? null, // Add branch_id from registration
@@ -326,7 +308,31 @@ public function getTicketLabels()
                 'closed_time' => Carbon::parse('01-01-2025 5:30:00 PM')->format('h:i:s'),
             ]);
 
+            // Generate unique tracking number with ONS prefix
+            $lastTicket = $ticket->id;
+            $trackingNumber = 'ONS' . str_pad($lastTicket, 7, '0', STR_PAD_LEFT);
+            $ticket->tracking_number=$trackingNumber;
+            $ticket->save();
+            
             DB::commit();
+
+          /* ---- To send whatsapp message ----- service request -------------- */
+           try
+            {
+                    $data=[
+                        "user_mobile"=>$customer->country_code.$customer->mobile,
+                        "tracking_id"=>$trackingNumber,
+                        "template_id"=>"258014" //wabis id
+                    ];
+
+                    $send_response=$this->sendServiceMessages($data);
+                    \Log::info($send_response);
+            }
+            catch (\Exception $e) {
+                \Log::info($e->getMessage());
+            }
+        
+          //-------------------------------------------------------------------
 
             return response()->json([
                 'success' => true,
