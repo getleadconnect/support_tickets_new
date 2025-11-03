@@ -132,7 +132,9 @@ const navigationItems: NavItem[] = [
 export function Sidebar({ className, ...props }: SidebarProps) {
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState<any>(null);
-  
+  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string>('GL Tickets');
+
   // Auto-expand Tickets menu if any ticket-related page is active
   const ticketsMenuPaths = ['/tickets', '/verify-tickets', '/closed-tickets', '/deleted-tickets'];
   const isTicketsActive = ticketsMenuPaths.includes(location.pathname);
@@ -154,7 +156,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
     );
   };
   
-  // Fetch current user on component mount
+  // Fetch current user and company info on component mount
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -171,7 +173,30 @@ export function Sidebar({ className, ...props }: SidebarProps) {
         console.error('Error fetching current user:', err);
       }
     };
+
+    const fetchCompanyInfo = async () => {
+      try {
+        const response = await fetch('/api/company', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.company) {
+            setCompanyLogo(data.company.logo);
+            if (data.company.name) {
+              setCompanyName(data.company.name);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching company info:', err);
+      }
+    };
+
     fetchCurrentUser();
+    fetchCompanyInfo();
   }, []);
   
   // Auto-expand Tickets menu when navigating to ticket-related pages
@@ -196,16 +221,47 @@ export function Sidebar({ className, ...props }: SidebarProps) {
     <div className={cn("h-full bg-gradient-to-b from-white to-slate-50", className)} {...props}>
       <div className="flex flex-col h-full">
         {/* Logo Section */}
-        <div className="px-6 py-6 border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
-                GL Tickets
-              </h2>
-              <p className="text-xs text-slate-500">Management System</p>
+        <div className="px-2 py-2 border-b border-slate-200">
+          <div className="flex flex-col items-center justify-center gap-2">
+            {companyLogo ? (
+              <div className="flex flex-col items-center gap-2">
+                <img
+                  src={companyLogo}
+                  alt={companyName}
+                  className="h-12 w-auto object-contain"
+                  onError={(e) => {
+                    // Fallback if image fails to load
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.parentElement?.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <p className="text-xs text-slate-500 text-center">Tickets Management System</p>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
+                    {companyName}
+                  </h2>
+                  <p className="text-xs text-slate-500">Management System</p>
+                </div>
+              </div>
+            )}
+            {/* Fallback display */}
+            <div style={{ display: 'none' }} className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
+                  {companyName}
+                </h2>
+                <p className="text-xs text-slate-500">Management System</p>
+              </div>
             </div>
           </div>
         </div>

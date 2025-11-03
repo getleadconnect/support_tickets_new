@@ -24,6 +24,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MessageSettingController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\CompanyController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -34,6 +35,9 @@ Route::post('/register-customer', [CustomerController::class, 'registerCustomer'
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Company routes
+    Route::get('/company', [CompanyController::class, 'getCompanyInfo']);
     
     // Branch Dashboard route
     Route::get('/branch-dashboard-stats', [BranchDashboardController::class, 'getStats']);

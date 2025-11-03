@@ -491,6 +491,54 @@ class TicketController extends Controller
                 ),
                 ['status_id' => $validated['status']]
             );
+
+                if ( $validated['status']==4) {
+
+                // ---- To send whatsapp message ----- completed message --------- 
+                try
+                    {
+                        $customer=Customer::where('id',$ticket->customer_id)->first();
+                        $data=[
+                            "customer_name"=>$customer->name,
+                            "user_mobile"=>$customer->country_code.$customer->mobile,
+                            "tracking_id"=>$ticket->tracking_number,
+                            "template_id"=>"259096", //wabis id
+                            "delivered_date"=>null
+                        ];
+
+                        $send_response=$this->sendServiceMessages($data);
+                        \Log::info($send_response);
+                    }
+                    catch (\Exception $e) {
+                        \Log::info($e->getMessage());
+                    }
+                
+                //-------------------------------------------------------------------
+                }
+
+                if ( $validated['status']==3) {   
+
+                // ---- To send whatsapp message ----- delivered message --close ticket------- 
+                try
+                    {
+                        $customer=Customer::where('id',$ticket->customer_id)->first();
+                        $data=[
+                            "customer_name"=>$customer->name,
+                            "user_mobile"=>$customer->country_code.$customer->mobile,
+                            "tracking_id"=>$ticket->tracking_number,
+                            "template_id"=>"259106", //wabis id
+                            "delivered_date"=>$ticket->closed_at
+                        ];
+
+                        $send_response=$this->sendServiceMessages($data);
+                        \Log::info($send_response);
+                    }
+                    catch (\Exception $e) {
+                        \Log::info($e->getMessage());
+                    }
+                //-------------------------------------------------------------------
+                }
+
         }
 
         // Log priority change
@@ -617,9 +665,11 @@ class TicketController extends Controller
             }
         }
 
+/*
+
         if (isset($validated['status']) && $validated['status']==4) {
 
-          /* ---- To send whatsapp message ----- completed message --------- */
+          // ---- To send whatsapp message ----- completed message --------- 
            try
             {
                 $customer=Customer::where('id',$ticket->customer_id)->first();
@@ -641,10 +691,10 @@ class TicketController extends Controller
           //-------------------------------------------------------------------
         }
 
-        if (isset($validated['status']) && $validated['status']==3) {
+        if (isset($validated['status']) && $validated['status']==3) {   
 
-         /* ---- To send whatsapp message ----- delivered message --------- */
-           /*try
+         // ---- To send whatsapp message ----- delivered message --close ticket------- 
+           try
             {
                 $customer=Customer::where('id',$ticket->customer_id)->first();
                 $data=[
@@ -661,10 +711,10 @@ class TicketController extends Controller
             catch (\Exception $e) {
                 \Log::info($e->getMessage());
             }
-        */
           //-------------------------------------------------------------------
         }
 
+*/
 
         return response()->json([
             'message' => 'Ticket updated successfully',
