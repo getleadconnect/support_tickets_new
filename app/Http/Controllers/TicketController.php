@@ -644,7 +644,7 @@ class TicketController extends Controller
         if (isset($validated['status']) && $validated['status']==3) {
 
          /* ---- To send whatsapp message ----- delivered message --------- */
-           try
+           /*try
             {
                 $customer=Customer::where('id',$ticket->customer_id)->first();
                 $data=[
@@ -652,7 +652,7 @@ class TicketController extends Controller
                     "user_mobile"=>$customer->country_code.$customer->mobile,
                     "tracking_id"=>$ticket->tracking_number,
                     "template_id"=>"259106", //wabis id
-                    "delivered_date"=>date('m-d-Y')
+                    "delivered_date"=>$ticket->closed_at
                   ];
 
                 $send_response=$this->sendServiceMessages($data);
@@ -661,7 +661,7 @@ class TicketController extends Controller
             catch (\Exception $e) {
                 \Log::info($e->getMessage());
             }
-        
+        */
           //-------------------------------------------------------------------
         }
 

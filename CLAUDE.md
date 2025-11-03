@@ -189,8 +189,8 @@ sudo /opt/lampp/lampp status
 
 **Key Model Relationships**:
 - `Ticket::agent()` - Many-to-many via `agent_ticket` table
-- `Ticket::notifyUsers()` - Many-to-many via `notify_ticket` table
-- `Ticket::labels()` - Many-to-many via `label_ticket` table
+- `Ticket::notifyTo()` - Many-to-many via `notify_ticket` table (returns users to be notified)
+- `Ticket::ticketLabel()` - Many-to-many via `label_ticket` table
 - `Task::agent()` - Many-to-many via `agent_task` table
 - `Task::ticket()` - Belongs to with `->withTrashed()` to display tracking numbers for soft-deleted tickets (Tickets use SoftDeletes)
 - `Task::taskStatus()` - Belongs to TaskStatus (status field maps to task_statuses.id)
@@ -210,11 +210,11 @@ sudo /opt/lampp/lampp status
 - `payments.tsx` - Payment tracking
 - `reports.tsx` - Report selection page
 - `report-preview.tsx` - Report preview with export options
-- `settings.tsx` - Comprehensive settings (326KB file with all configuration)
+- `settings.tsx` - Comprehensive settings (large 317KB file with all configuration)
 - Specialized views: `deleted-tickets.tsx`, `verify-tickets.tsx`, `closed-tickets.tsx`
 
 **Components** (`resources/js/components/`):
-- **Modal Components**: `TicketDetailsModal.tsx` (105KB), `TaskDetailsModal.tsx`, `AddTaskModal.tsx`, `AddTicketModal.tsx`, `AddCustomerModal.tsx`
+- **Modal Components**: `TicketDetailsModal.tsx` (large 103KB file), `TaskDetailsModal.tsx`, `AddTaskModal.tsx`, `AddTicketModal.tsx`, `AddCustomerModal.tsx`
 - **Layout Components**: `sidebar.tsx`, `topbar.tsx`, `dashboard-layout.tsx`
 - **Feature Components**: `AssignAgentModal.tsx`, `InvoiceDetailsOffcanvas.tsx`, `PayInvoiceModal.tsx`, `ProductModal.tsx`
 - **shadcn/ui Components** (`components/ui/`): Pre-built, customizable components available:
@@ -233,6 +233,7 @@ sudo /opt/lampp/lampp status
 - Custom scrollbar styling with slate colors
 - Color-coded status badges (blue=open, yellow=pending, purple=in-progress, green=closed)
 - Responsive design with mobile card views and desktop table views
+- **Lazy Loading**: Most pages are lazy-loaded using React.lazy() in `app.jsx` to improve initial load performance. Only Login and Register pages are eagerly loaded.
 
 ### API Routes (routes/api.php)
 
@@ -476,7 +477,7 @@ The project uses code splitting for optimal performance:
 
 - If build fails, check that all dependencies are installed: `composer install && npm install`
 - For type errors, check TypeScript interfaces match backend response structure
-- Large files like `settings.tsx` (326KB) and `TicketDetailsModal.tsx` (105KB) may cause slow builds
+- Large files like `settings.tsx` (317KB) and `TicketDetailsModal.tsx` (103KB) may cause slow builds
 
 ### Database Issues
 

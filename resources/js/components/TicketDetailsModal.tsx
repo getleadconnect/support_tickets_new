@@ -157,6 +157,8 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState('1');
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const [pendingCloseStatus, setPendingCloseStatus] = useState<string | null>(null);
   const [totalPrice, setTotalPrice] = useState(0);
   const [showEditTicket, setShowEditTicket] = useState(false);
   const [editIssue, setEditIssue] = useState('');
@@ -1068,6 +1070,20 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
     }
   };
 
+  const handleConfirmClose = async () => {
+    if (!pendingCloseStatus) return;
+
+    try {
+      setStatus(pendingCloseStatus);
+      await handleUpdateTicket({ newStatus: pendingCloseStatus });
+      setCloseConfirmOpen(false);
+      setPendingCloseStatus(null);
+    } catch (error) {
+      console.error('Error closing ticket:', error);
+      toast.error('Failed to close ticket');
+    }
+  };
+
   if (!ticket) return null;
 
   return (
@@ -1225,8 +1241,14 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
                 <div>
                   <Label className="text-xs text-gray-600 font-normal">Ticket Status</Label>
                   <Select value={status} onValueChange={(value) => {
-                    setStatus(value);
-                    handleUpdateTicket({ newStatus: value });
+                    // Check if status is being changed to "Closed" (value = 3)
+                    if (value === '3') {
+                      setPendingCloseStatus(value);
+                      setCloseConfirmOpen(true);
+                    } else {
+                      setStatus(value);
+                      handleUpdateTicket({ newStatus: value });
+                    }
                   }}>
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue />
@@ -2449,6 +2471,33 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
               navigate('/verify-tickets'); // Navigate to verify tickets page
             }}>
               Verify Ticket
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status Change to Closed Confirmation Dialog */}
+      <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Close Ticket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to close ticket <strong className="font-bold">#{currentTicket?.tracking_number}</strong>?
+              This will set the ticket status to "Closed".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setCloseConfirmOpen(false);
+              setPendingCloseStatus(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmClose}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              OK
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

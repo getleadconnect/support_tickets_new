@@ -162,6 +162,10 @@ export default function Tickets() {
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [editSelectedAgents, setEditSelectedAgents] = useState<number[]>([]);
   const [editSelectedNotifyUsers, setEditSelectedNotifyUsers] = useState<number[]>([]);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const [pendingCloseTicket, setPendingCloseTicket] = useState<Ticket | null>(null);
+  const [addFormData, setAddFormData] = useState<any>({});
+  const [showCreatedByMe, setShowCreatedByMe] = useState(false);
 
   useEffect(() => {
     console.log('useEffect running for fetchTickets');
@@ -545,17 +549,44 @@ export default function Tickets() {
       await axios.put(`/tickets/${deletingTicket.id}`, {
         status: 3 // Closed status
       });
-      
+
       setDeleteConfirmOpen(false);
       setDeletingTicket(null);
-      
+
       // Refresh the tickets list
       await fetchTickets();
-      
+
       toast.success('Ticket deleted successfully');
     } catch (err) {
       console.error('Error closing ticket:', err);
       toast.error('Failed to delete ticket');
+    }
+  };
+
+  const handleConfirmClose = async () => {
+    if (!pendingCloseTicket) return;
+
+    try {
+      console.log('Updating status to: Closed (3)');
+      const response = await axios.put(`/tickets/${pendingCloseTicket.id}`, {
+        status: 3,
+        priority: pendingCloseTicket.priority,
+        issue: pendingCloseTicket.issue,
+        description: pendingCloseTicket.description,
+        customer_id: pendingCloseTicket.customer_id
+      });
+      console.log('Update response:', response.data);
+      toast.success('Ticket closed successfully');
+
+      setCloseConfirmOpen(false);
+      setPendingCloseTicket(null);
+
+      // Refresh the tickets list
+      await fetchTickets();
+    } catch (error) {
+      console.error('Error closing ticket:', error);
+      console.error('Error details:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Failed to close ticket');
     }
   };
 
@@ -922,26 +953,35 @@ export default function Tickets() {
                           {ticket.ticket_type}
                         </span>
                       )}
-                      <Select 
+                      <Select
                         value={String(ticket.status)}
-                        onValueChange={async (value) => {
-                          try {
-                            console.log('Updating status to:', value);
-                            const response = await axios.put(`/tickets/${ticket.id}`, {
-                              status: parseInt(value),
-                              priority: ticket.priority,
-                              issue: ticket.issue,
-                              description: ticket.description,
-                              customer_id: ticket.customer_id
-                            });
-                            console.log('Update response:', response.data);
-                            const statusName = statuses.find(s => s.id === parseInt(value))?.status || 'Unknown';
-                            toast.success(`Status updated to ${statusName}`);
-                            fetchTickets(); // Refresh the list
-                          } catch (error) {
-                            console.error('Error updating status:', error);
-                            console.error('Error details:', error.response?.data);
-                            toast.error(error.response?.data?.message || 'Failed to update status');
+                        onValueChange={(value) => {
+                          // Check if status is being changed to "Closed" (value = 3)
+                          if (value === '3') {
+                            setPendingCloseTicket(ticket);
+                            setCloseConfirmOpen(true);
+                          } else {
+                            // For other statuses, update directly
+                            (async () => {
+                              try {
+                                console.log('Updating status to:', value);
+                                const response = await axios.put(`/tickets/${ticket.id}`, {
+                                  status: parseInt(value),
+                                  priority: ticket.priority,
+                                  issue: ticket.issue,
+                                  description: ticket.description,
+                                  customer_id: ticket.customer_id
+                                });
+                                console.log('Update response:', response.data);
+                                const statusName = statuses.find(s => s.id === parseInt(value))?.status || 'Unknown';
+                                toast.success(`Status updated to ${statusName}`);
+                                fetchTickets(); // Refresh the list
+                              } catch (error) {
+                                console.error('Error updating status:', error);
+                                console.error('Error details:', error.response?.data);
+                                toast.error(error.response?.data?.message || 'Failed to update status');
+                              }
+                            })();
                           }
                         }}
                       >
@@ -1447,17 +1487,44 @@ export default function Tickets() {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm Delete</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete ticket #{deletingTicket?.tracking_number}? 
+                Are you sure you want to delete ticket #{deletingTicket?.tracking_number}?
                 This will close the ticket and set its status to "Closed".
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogAction
                 onClick={handleConfirmDelete}
                 className="bg-red-500 hover:bg-red-600 text-white"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Close Ticket Confirmation Dialog */}
+        <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Close Ticket</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to close ticket <strong className="font-bold">#{pendingCloseTicket?.tracking_number}</strong>?
+                This will set the ticket status to "Closed".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setCloseConfirmOpen(false);
+                setPendingCloseTicket(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmClose}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                OK
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
