@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('whatsapp_api')->nullable();
             $table->string('api_token')->nullable();
             $table->boolean('status')->default(true);
+            $table->string('phone_number_id',100)->nullable();
             $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
             
