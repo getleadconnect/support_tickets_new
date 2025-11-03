@@ -321,8 +321,9 @@ class InvoiceController extends Controller
                 'amountInWords' => $amountInWords
             ];
 
+     
             // Set DomPDF options to handle missing GD extension
-            $pdf = Pdf::loadView('invoices.pdf', $data);
+            $pdf = Pdf::loadView('invoices.invoice_pdf', $data);
             $pdf->setPaper('A4', 'portrait');
 
             // Set options to avoid GD dependency

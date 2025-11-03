@@ -353,9 +353,11 @@ class TicketController extends Controller
                 $customer=Customer::where('id',$ticket->customer_id)->first();
 
                 $data=[
+                    "customer_name"=>$customer->name,
                     "user_mobile"=>$customer->country_code.$customer->mobile,
                     "tracking_id"=>$ticket->tracking_number,
-                    "template_id"=>"258014" //wabis id
+                    "template_id"=>"259094", //wabis id
+                    "delivered_date"=>null
                 ];
 
                 $send_response=$this->sendServiceMessages($data);
@@ -622,9 +624,11 @@ class TicketController extends Controller
             {
                 $customer=Customer::where('id',$ticket->customer_id)->first();
                 $data=[
+                    "customer_name"=>$customer->name,
                     "user_mobile"=>$customer->country_code.$customer->mobile,
                     "tracking_id"=>$ticket->tracking_number,
-                    "template_id"=>"258016" //wabis id
+                    "template_id"=>"259096", //wabis id
+                    "delivered_date"=>null
                   ];
 
                 $send_response=$this->sendServiceMessages($data);
@@ -644,9 +648,11 @@ class TicketController extends Controller
             {
                 $customer=Customer::where('id',$ticket->customer_id)->first();
                 $data=[
+                    "customer_name"=>$customer->name,
                     "user_mobile"=>$customer->country_code.$customer->mobile,
                     "tracking_id"=>$ticket->tracking_number,
-                    "template_id"=>"258020" //wabis id
+                    "template_id"=>"259106", //wabis id
+                    "delivered_date"=>date('m-d-Y')
                   ];
 
                 $send_response=$this->sendServiceMessages($data);

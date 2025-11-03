@@ -222,6 +222,7 @@ interface MessageSetting {
   message_type: string;
   whatsapp_api: string | null;
   token: string | null;
+  phone_number_id: string | null;
   secret_key: string | null;
   template_name: string | null;
   template_text: string | null;
@@ -476,6 +477,7 @@ export default function Settings() {
     message_type: '',
     whatsapp_api: '',
     token: '',
+    phone_number_id: '',
     secret_key: '',
     template_name: '',
     template_text: '',
@@ -2358,6 +2360,7 @@ export default function Settings() {
         vendor_name: '',
         whatsapp_api: '',
         api_token: '',
+        phone_number_id: '',
         status: true,
       });
     } catch (error: any) {
@@ -5327,6 +5330,7 @@ export default function Settings() {
                         vendor_name: '',
                         whatsapp_api: '',
                         api_token: '',
+                        phone_number_id: '',
                         status: true,
                       });
                       setMessageModalOpen(true);
@@ -5346,6 +5350,7 @@ export default function Settings() {
                         <TableHead className="font-semibold text-gray-700 py-3">Vendor Name</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3">WhatsApp API</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3">API Token</TableHead>
+                        <TableHead className="font-semibold text-gray-700 py-3">Phone Number ID</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3">Status</TableHead>
                         <TableHead className="font-semibold text-gray-700 py-3 text-center">Actions</TableHead>
                       </TableRow>
@@ -5353,7 +5358,7 @@ export default function Settings() {
                     <TableBody>
                       {loadingMessages ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
+                          <TableCell colSpan={7} className="h-24 text-center">
                             <div className="flex items-center justify-center">
                               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                             </div>
@@ -5361,7 +5366,7 @@ export default function Settings() {
                         </TableRow>
                       ) : messageSettings.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
+                          <TableCell colSpan={7} className="h-24 text-center">
                             No WhatsApp settings found.
                           </TableCell>
                         </TableRow>
@@ -5402,6 +5407,13 @@ export default function Settings() {
                               {message.masked_token || message.api_token ? (
                                 <span className="text-sm truncate max-w-[200px] block" title={message.masked_token || message.api_token}>
                                   {message.masked_token || message.api_token}
+                                </span>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {message.phone_number_id ? (
+                                <span className="text-sm font-mono truncate max-w-[150px] block" title={message.phone_number_id}>
+                                  {message.phone_number_id}
                                 </span>
                               ) : '-'}
                             </TableCell>
@@ -6881,6 +6893,17 @@ export default function Settings() {
                     For security, the current token is hidden. Enter a new value to update, or leave blank to keep existing.
                   </p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone-number-id">Phone Number ID</Label>
+                <Input
+                  id="phone-number-id"
+                  type="text"
+                  value={messageFormData.phone_number_id}
+                  onChange={(e) => setMessageFormData({ ...messageFormData, phone_number_id: e.target.value })}
+                  placeholder="Enter phone number ID"
+                />
               </div>
 
               <div className="flex items-center space-x-2">

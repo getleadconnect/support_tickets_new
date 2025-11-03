@@ -320,9 +320,11 @@ public function getTicketLabels()
            try
             {
                     $data=[
+                        "customer_name"=>$customer->name,
                         "user_mobile"=>$customer->country_code.$customer->mobile,
                         "tracking_id"=>$trackingNumber,
-                        "template_id"=>"258014" //wabis id
+                        "template_id"=>"259094", //wabis id
+                        "delivered_date"=>null
                     ];
 
                     $send_response=$this->sendServiceMessages($data);

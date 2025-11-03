@@ -14,6 +14,7 @@ class MessageSetting extends Model
         'whatsapp_api',
         'api_token',
         'status',
+        'phone_number_id',
         'created_by'
     ];
 

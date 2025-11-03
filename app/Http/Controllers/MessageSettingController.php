@@ -58,6 +58,7 @@ class MessageSettingController extends Controller
             'vendor_name' => 'required|string|max:255',
             'whatsapp_api' => 'required|string|max:500',
             'api_token' => 'nullable|string|max:500',
+            'phone_number_id' => 'nullable|string|max:255',
             'status' => 'boolean'
         ]);
 
@@ -131,6 +132,7 @@ class MessageSettingController extends Controller
             'message_type' => 'nullable|string|max:50',
             'whatsapp_api' => 'sometimes|required|string|max:500',
             'api_token' => 'nullable|string|max:500',
+            'phone_number_id' => 'nullable|string|max:255',
             'secret_key' => 'nullable|string|max:500',
             'template_name' => 'nullable|string|max:255',
             'template_text' => 'nullable|string',

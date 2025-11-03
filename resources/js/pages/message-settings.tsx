@@ -55,6 +55,7 @@ interface MessageSetting {
   message_type: string;
   whatsapp_api: string | null;
   token: string | null;
+  phone_number_id: string | null;
   secret_key: string | null;
   template_name: string | null;
   template_text: string | null;
@@ -93,6 +94,7 @@ export function MessageSettings() {
     message_type: '',
     whatsapp_api: '',
     token: '',
+    phone_number_id: '',
     secret_key: '',
     template_name: '',
     template_text: '',
@@ -151,6 +153,7 @@ export function MessageSettings() {
         message_type: message.message_type,
         whatsapp_api: message.whatsapp_api || '',
         token: '', // Don't populate for security
+        phone_number_id: message.phone_number_id || '',
         secret_key: '', // Don't populate for security
         template_name: message.template_name || '',
         template_text: message.template_text || '',
@@ -162,6 +165,7 @@ export function MessageSettings() {
         message_type: '',
         whatsapp_api: '',
         token: '',
+        phone_number_id: '',
         secret_key: '',
         template_name: '',
         template_text: '',
@@ -179,6 +183,7 @@ export function MessageSettings() {
       message_type: '',
       whatsapp_api: '',
       token: '',
+      phone_number_id: '',
       secret_key: '',
       template_name: '',
       template_text: '',
@@ -348,6 +353,7 @@ export function MessageSettings() {
                 <TableHead>Template Name</TableHead>
                 <TableHead>WhatsApp API</TableHead>
                 <TableHead>Token</TableHead>
+                <TableHead>Phone Number ID</TableHead>
                 <TableHead>Template Text</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created By</TableHead>
@@ -357,7 +363,7 @@ export function MessageSettings() {
             <TableBody>
               {loading ? (
                 <TableRow style={{ borderBottomColor: '#e4e4e4' }}>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={9} className="text-center py-8">
                     <div className="flex justify-center">
                       <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
                     </div>
@@ -365,7 +371,7 @@ export function MessageSettings() {
                 </TableRow>
               ) : messageSettings.length === 0 ? (
                 <TableRow style={{ borderBottomColor: '#e4e4e4' }}>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                     No message settings found
                   </TableCell>
                 </TableRow>
@@ -420,6 +426,29 @@ export function MessageSettings() {
                               <EyeOff className="h-3 w-3" />
                             ) : (
                               <Eye className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {message.phone_number_id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-mono truncate max-w-[120px]">
+                            {message.phone_number_id}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => copyToClipboard(message.phone_number_id!, 'phone_id')}
+                          >
+                            {copiedField === 'phone_id' ? (
+                              <Check className="h-3 w-3 text-green-600" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
                             )}
                           </Button>
                         </div>
@@ -597,6 +626,19 @@ export function MessageSettings() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="phone_number_id">Phone Number ID</Label>
+                <Input
+                  id="phone_number_id"
+                  value={formData.phone_number_id}
+                  onChange={(e) => setFormData({ ...formData, phone_number_id: e.target.value })}
+                  placeholder="Enter phone number ID"
+                />
+                {errors.phone_number_id && (
+                  <p className="text-sm text-red-600">{errors.phone_number_id[0]}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="secret_key">Secret Key</Label>
                 <Textarea
                   id="secret_key"
@@ -714,6 +756,24 @@ export function MessageSettings() {
                         onClick={() => copyToClipboard(viewingMessage.token!, 'view_token')}
                       >
                         {copiedField === 'view_token' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {viewingMessage.phone_number_id && (
+                  <div>
+                    <Label className="text-sm text-gray-600">Phone Number ID</Label>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono text-sm bg-gray-100 p-2 rounded flex-1 break-all">
+                        {viewingMessage.phone_number_id}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(viewingMessage.phone_number_id!, 'view_phone_id')}
+                      >
+                        {copiedField === 'view_phone_id' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
                   </div>

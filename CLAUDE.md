@@ -88,6 +88,8 @@ Route::get('/tickets', function() {
 - **Routes**: Only map HTTP verbs to controller methods
 - **Middleware**: Handle cross-cutting concerns (auth, CORS, etc.)
 - **Services** (`app/Services/`): Complex business logic that spans multiple models
+  - `WhatsappApiService.php`: Trait for sending WhatsApp notifications (used in TicketController and TaskController)
+  - `SimpleXLSXParser.php`: Service for parsing Excel files during customer import
 
 ## Development Commands
 
@@ -180,18 +182,20 @@ sudo /opt/lampp/lampp status
 - Settings controllers: `MessageSettingController.php`, `ProductController.php`, etc.
 
 **Models** (`app/Models/`):
-- Core models: `Ticket`, `Task`, `Customer`, `User`, `Invoice`, `Payment`
+- Core models: `Ticket` (uses SoftDeletes), `Task`, `Customer`, `User`, `Invoice`, `Payment`
 - Relationship tables use pivot models: `AgentTicket`, `AgentTask`, `AssignAgent`, `NotifyTicket`
-- Configuration models: `TicketStatus`, `TaskStatus`, `Priority`, `Branch`, `TicketLabel`, `Role`
+- Configuration models: `TicketStatus`, `TaskStatus`, `Priority`, `Branch`, `TicketLabel`, `Role`, `MessageSetting`
 - Supporting models: `Activity`, `Product`, `Brand`, `Category`, `Department`, `Designation`
 
 **Key Model Relationships**:
 - `Ticket::agent()` - Many-to-many via `agent_ticket` table
 - `Ticket::notifyUsers()` - Many-to-many via `notify_ticket` table
 - `Ticket::labels()` - Many-to-many via `label_ticket` table
-- `Task::agent()` - Many-to-many via `agent_task` table, **uses `->withTrashed()`** to show soft-deleted agents
-- `Task::ticket()` - Belongs to with `->withTrashed()` to display tracking numbers for soft-deleted tickets
+- `Task::agent()` - Many-to-many via `agent_task` table
+- `Task::ticket()` - Belongs to with `->withTrashed()` to display tracking numbers for soft-deleted tickets (Tickets use SoftDeletes)
 - `Task::taskStatus()` - Belongs to TaskStatus (status field maps to task_statuses.id)
+- `Task::branch()` - Belongs to Branch for location-based task management
+- `Task::category()` - Belongs to TaskCategory for task categorization
 
 ### Frontend Structure (resources/js/)
 
@@ -282,8 +286,8 @@ All ticket/task changes create activity records in the `activities` table with t
 
 ## Database Key Tables
 
-- **tickets**: Main ticket data with soft deletes
-- **tasks**: Task data with soft deletes
+- **tickets**: Main ticket data with soft deletes (uses `deleted_at` column)
+- **tasks**: Task data (does NOT use soft deletes)
 - **customers**: Customer information
 - **users**: System users (agents, managers, admins)
 - **assign_agents**: Manager-to-agent assignments (columns: `user_id` for manager, `agent_id` for agent)
@@ -294,6 +298,7 @@ All ticket/task changes create activity records in the `activities` table with t
 - **products**, **brands**, **categories**: Inventory management
 - **ticket_images**: File attachments
 - **product_tickets**: Spare parts tracking
+- **message_settings**: WhatsApp API configuration for notifications (stores `instance_id`, `access_token`, `is_active`)
 
 ## Important Implementation Details
 
@@ -308,9 +313,10 @@ All ticket/task changes create activity records in the `activities` table with t
 
 ### Soft Deletes
 
-- Both `Ticket` and `Task` models use `SoftDeletes` trait
-- To show related data for soft-deleted records, use `->withTrashed()` in relationships
-- Example: `Task::ticket()` relationship uses `->withTrashed()` to display tracking numbers
+- Only `Ticket` model uses `SoftDeletes` trait (NOT Task model)
+- To show related data for soft-deleted tickets, use `->withTrashed()` in relationships
+- Example: `Task::ticket()` relationship uses `->withTrashed()` to display tracking numbers for deleted tickets
+- Soft-deleted tickets can be viewed in `deleted-tickets.tsx` and restored via `/api/tickets/{ticket}/restore` endpoint
 
 ### File Uploads
 
@@ -319,9 +325,17 @@ All ticket/task changes create activity records in the `activities` table with t
 
 ### Frontend-Backend Communication
 
-- Axios configured in `bootstrap.js` with base URL from meta tag
+- Axios configured in `bootstrap.js` with base URL from meta tag in `dashboard.blade.php`
+- The meta tag reads from `.env` file's `APP_URL` variable
 - All API calls use relative paths (e.g., `/tickets` becomes `http://APP_URL/api/tickets`)
 - Toast notifications (react-hot-toast) for success/error feedback
+
+### WhatsApp Integration
+
+- WhatsApp notifications are sent via `WhatsappApiService` trait
+- Configuration stored in `message_settings` table (accessible via Settings page)
+- Used in both `TicketController` and `TaskController` for customer notifications
+- Requires `instance_id` and `access_token` to be configured
 
 ### Modal Positioning
 
