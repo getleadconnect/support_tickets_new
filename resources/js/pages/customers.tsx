@@ -809,7 +809,7 @@ export default function Customers() {
 
             {/* Mobile Field with Country Code */}
             <div className="grid gap-2">
-              <Label htmlFor="mobile">Mobile Number</Label>
+              <Label htmlFor="mobile">Whatsapp Number</Label>
               <div className="flex gap-2">
                 <CountryCodePicker
                   value={customerFormData.countryCode}
@@ -818,7 +818,7 @@ export default function Customers() {
                 />
                 <Input
                   id="mobile"
-                  placeholder="Enter mobile number"
+                  placeholder="Enter whatsapp number"
                   value={customerFormData.mobile}
                   onChange={(e) => handleCustomerFormChange('mobile', e.target.value)}
                   className="flex-1"
@@ -921,7 +921,7 @@ export default function Customers() {
 
             {/* Mobile Field with Country Code */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-mobile">Mobile Number</Label>
+              <Label htmlFor="edit-mobile">Whatsapp Number</Label>
               <div className="flex gap-2">
                 <CountryCodePicker
                   value={customerFormData.countryCode}
@@ -930,7 +930,7 @@ export default function Customers() {
                 />
                 <Input
                   id="edit-mobile"
-                  placeholder="Enter mobile number"
+                  placeholder="Enter whatsapp number"
                   value={customerFormData.mobile}
                   onChange={(e) => handleCustomerFormChange('mobile', e.target.value)}
                   className="flex-1"

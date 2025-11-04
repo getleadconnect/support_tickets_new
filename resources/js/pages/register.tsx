@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CountryCodePicker } from '@/components/CountryCodePicker';
 import { AlertCircle, CheckCircle, Loader2, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -58,7 +58,7 @@ export function Register() {
 
     // Mobile validation (optional but if provided, should be valid)
     if (formData.mobile && !/^\d{10}$/.test(formData.mobile)) {
-      newErrors.mobile = 'Please enter a valid 10-digit mobile number';
+      newErrors.mobile = 'Please enter a valid 10-digit whatsapp number';
     }
 
     // Email validation
@@ -234,33 +234,24 @@ export function Register() {
 
             {/* Mobile Field with Country Code */}
             <div className="space-y-2">
-              <Label htmlFor="mobile">Mobile Number</Label>
-              <div className="flex gap-2">
-                <Select
+              <Label htmlFor="mobile">Whatsapp Number</Label>
+              <div className="flex items-center gap-2">
+                <CountryCodePicker
                   value={formData.countryCode}
-                  onValueChange={(value) => handleChange('countryCode', value)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="w-[120px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="+91">+91 (IN)</SelectItem>
-                    <SelectItem value="+1">+1 (US)</SelectItem>
-                    <SelectItem value="+44">+44 (UK)</SelectItem>
-                    <SelectItem value="+61">+61 (AU)</SelectItem>
-                    <SelectItem value="+86">+86 (CN)</SelectItem>
-                    <SelectItem value="+81">+81 (JP)</SelectItem>
-                    <SelectItem value="+49">+49 (DE)</SelectItem>
-                    <SelectItem value="+33">+33 (FR)</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => handleChange('countryCode', value)}
+                  className="w-28"
+                />
                 <Input
                   id="mobile"
                   type="tel"
-                  placeholder="Enter mobile number"
+                  placeholder="Enter whatsapp number"
                   value={formData.mobile}
-                  onChange={(e) => handleChange('mobile', e.target.value)}
+                  onChange={(e) => {
+                    // Only allow numbers
+                    const value = e.target.value.replace(/\D/g, '');
+                    handleChange('mobile', value);
+                  }}
+                  maxLength={15}
                   className={`flex-1 ${errors.mobile ? 'border-red-500' : ''}`}
                   disabled={isSubmitting}
                 />

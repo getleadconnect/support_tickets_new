@@ -123,7 +123,7 @@ export function AddCustomerModal({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="contact_number">Contact Number</Label>
+            <Label htmlFor="contact_number">Whatsapp Number</Label>
             <div className="flex items-center gap-2">
               <CountryCodePicker
                 value={formData.country_code}
