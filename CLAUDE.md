@@ -497,3 +497,62 @@ XAMPP PHP may lack required extensions. Use system PHP (8.2+) with:
 ```bash
 sudo apt-get install php8.2-xml php8.2-mysql php8.2-mbstring php8.2-curl
 ```
+
+## Recent Updates and Features
+
+### Ticket Status Close Confirmation (Added: 2025-01-03)
+
+**Feature**: Confirmation dialog when changing ticket status to "Closed"
+
+**Implementation Locations**:
+1. **Tickets List Page** (`resources/js/pages/tickets.tsx`):
+   - Added state variables: `closeConfirmOpen`, `pendingCloseTicket`
+   - Modified status dropdown to intercept "Closed" (value=3) selection
+   - Shows AlertDialog with tracking number in **bold font**
+   - User must confirm with "OK" button or cancel the action
+   - On confirmation, ticket status updates to "Closed" and disappears from active list
+
+2. **Ticket Details Modal** (`resources/js/components/TicketDetailsModal.tsx`):
+   - Added state variables: `closeConfirmOpen`, `pendingCloseStatus`
+   - Modified status Select to intercept "Closed" (value=3) selection
+   - Shows AlertDialog with tracking number in **bold font**
+   - User must confirm with "OK" button or cancel the action
+   - On confirmation, ticket status updates and activities are refreshed
+
+**User Experience**:
+- When selecting "Closed" status from dropdown
+- AlertDialog appears: "Are you sure you want to close ticket **#[tracking_number]**?"
+- Cancel button: Closes dialog, no changes
+- OK button (blue): Confirms and closes ticket, shows success message
+
+### Company Logo in Sidebar (Added: 2025-01-03)
+
+**Feature**: Display company logo from database in sidebar menu
+
+**Backend**:
+- Created `CompanyController.php` with `getCompanyInfo()` method
+- Added API route: `GET /api/company` (protected with auth:sanctum)
+- Fetches company data from `company` table including `logo` column
+
+**Frontend** (`resources/js/components/sidebar.tsx`):
+- Added state variables: `companyLogo`, `companyName`
+- Fetches company information on component mount via `/api/company`
+- Logo Section displays:
+  - **With logo**: Centered company logo image (h-12, ~48px height) with "Tickets Management System" text below in small font
+  - **Without logo**: Fallback to purple gradient icon with company name and "Management System" text
+- Layout: Vertical centered alignment (`flex flex-col items-center justify-center`)
+- Error handling: If logo fails to load, shows fallback display
+
+**Database Requirements**:
+- `company` table must exist with:
+  - `logo` column: Full URL or path to logo image
+  - `name` column: Company name (optional, defaults to "GL Tickets")
+
+**Visual Layout**:
+```
+┌─────────────────────┐
+│    [LOGO IMAGE]     │  ← Centered horizontally (48px height)
+│ Tickets Management  │  ← Small text (text-xs)
+│       System        │  ← text-slate-500
+└─────────────────────┘
+```

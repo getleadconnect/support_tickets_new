@@ -187,7 +187,7 @@ $logo=\App\Models\Company::pluck('logo')->first();
             <div class="header-left">
                 <div class="logo-placeholder">
                     @if($logo && extension_loaded('gd'))
-                        <img src="{{$logo}}" style="margin-left:200px;">
+                        <img src="{{$logo}}" style="margin-left:50px;width:100px !important;">
                     @else
                         <div style="margin-left:200px; padding: 20px; border: 1px solid #ccc; display: inline-block;">
                             <strong>LOGO</strong>

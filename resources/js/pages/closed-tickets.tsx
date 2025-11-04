@@ -98,6 +98,10 @@ export default function ClosedTickets() {
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
 
+  // Reopen confirmation dialog state
+  const [reopenConfirmOpen, setReopenConfirmOpen] = useState(false);
+  const [pendingReopenTicket, setPendingReopenTicket] = useState<Ticket | null>(null);
+
   useEffect(() => {
     fetchCustomers();
     // Only fetch agents if user is admin (role_id = 1)
@@ -190,13 +194,22 @@ export default function ClosedTickets() {
     setCurrentPage(page);
   };
 
-  const handleReopenTicket = async (ticketId: number) => {
+  const handleReopenClick = (ticket: Ticket) => {
+    setPendingReopenTicket(ticket);
+    setReopenConfirmOpen(true);
+  };
+
+  const handleConfirmReopen = async () => {
+    if (!pendingReopenTicket) return;
+
     try {
       // Set status to 1 (Open)
-      await axios.put(`/tickets/${ticketId}`, {
+      await axios.put(`/tickets/${pendingReopenTicket.id}`, {
         status: 1
       });
       toast.success('Ticket reopened successfully');
+      setReopenConfirmOpen(false);
+      setPendingReopenTicket(null);
       fetchClosedTickets();
     } catch (error) {
       console.error('Error reopening ticket:', error);
@@ -423,7 +436,7 @@ export default function ClosedTickets() {
                             variant="outline"
                             size="sm"
                             className="text-red-600 border-red-600 hover:bg-red-50 flex-1 sm:flex-initial text-xs sm:text-sm"
-                            onClick={() => handleReopenTicket(ticket.id)}
+                            onClick={() => handleReopenClick(ticket)}
                           >
                             <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                             Reopen
@@ -547,6 +560,33 @@ export default function ClosedTickets() {
           </div>
         </div>
       </div>
+
+      {/* Reopen Confirmation Dialog */}
+      <AlertDialog open={reopenConfirmOpen} onOpenChange={setReopenConfirmOpen}>
+        <AlertDialogContent className="w-[90%] sm:w-full max-w-lg mx-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen Ticket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reopen ticket{' '}
+              <strong>#{pendingReopenTicket?.tracking_number || pendingReopenTicket?.id}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setReopenConfirmOpen(false);
+              setPendingReopenTicket(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReopen}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }

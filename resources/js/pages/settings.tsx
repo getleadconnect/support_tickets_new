@@ -2904,61 +2904,11 @@ export default function Settings() {
               <div className="space-y-4">
                 <div className="mb-6">
                   <h3 className="text-xl font-semibold text-gray-900">Roles Management</h3>
-                  <p className="text-sm text-gray-500 mt-1">Create and manage user roles with specific permissions</p>
+                  <p className="text-sm text-gray-500 mt-1">Manage user roles and their permissions</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                  {/* First Column - 25% */}
-                  <div className="lg:col-span-1">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Role</h3>
-                    <p className="text-sm text-gray-600">
-                      Manage roles in your system. Create roles with specific permissions and descriptions for better access control.
-                    </p>
-                    
-                    {/* Add Role Form */}
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="role-name">Role Name</Label>
-                        <Input
-                          id="role-name"
-                          placeholder="Enter role name"
-                          value={roleFormData.name}
-                          onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleSaveAddRole();
-                            }
-                          }}
-                          disabled={saving}
-                          className="mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="role-description">Description</Label>
-                        <Textarea
-                          id="role-description"
-                          placeholder="Enter role description"
-                          value={roleFormData.description}
-                          onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
-                          disabled={saving}
-                          className="mt-1"
-                          rows={3}
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleSaveAddRole}
-                        disabled={saving || !roleFormData.name.trim()}
-                        className="w-full bg-black hover:bg-gray-800 text-white"
-                      >
-                        {saving ? 'Adding...' : 'Add Role'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Second Column - 75% */}
-                <div className="lg:col-span-3">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                <div className="lg:col-span-1">
                   <div className="space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center space-x-2">
@@ -2990,7 +2940,9 @@ export default function Settings() {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-gray-50 border-b border-[#e4e4e4]">
+                            <TableHead className="font-semibold text-gray-700 py-3">Sl No</TableHead>
                             <TableHead className="font-semibold text-gray-700 py-3">Name</TableHead>
+                            <TableHead className="font-semibold text-gray-700 py-3">Type</TableHead>
                             <TableHead className="font-semibold text-gray-700 py-3">Description</TableHead>
                             <TableHead className="font-semibold text-gray-700 py-3">Users</TableHead>
                             <TableHead className="font-semibold text-gray-700 py-3">Created At</TableHead>
@@ -3000,7 +2952,7 @@ export default function Settings() {
                         <TableBody>
                           {loadingRoles ? (
                             <TableRow>
-                              <TableCell colSpan={5} className="h-24 text-center">
+                              <TableCell colSpan={7} className="h-24 text-center">
                                 <div className="flex items-center justify-center">
                                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                                 </div>
@@ -3008,28 +2960,38 @@ export default function Settings() {
                             </TableRow>
                           ) : errorRoles ? (
                             <TableRow>
-                              <TableCell colSpan={5} className="h-24 text-center">
+                              <TableCell colSpan={7} className="h-24 text-center">
                                 <div className="text-destructive">Error: {errorRoles}</div>
                               </TableCell>
                             </TableRow>
                           ) : roles.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={5} className="h-24 text-center">
+                              <TableCell colSpan={7} className="h-24 text-center">
                                 No roles found.
                               </TableCell>
                             </TableRow>
                           ) : (
-                            roles.map((role) => (
+                            roles.map((role, index) => (
                               <TableRow key={role.id} className="hover:bg-gray-50 border-b border-[#e4e4e4] last:border-b-0">
                                 <TableCell className="py-3">
+                                  <span className="font-medium text-gray-700">
+                                    {((currentPageRoles - 1) * parseInt(perPageRoles)) + index + 1}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="py-3">
                                   <span className={`font-medium ${
-                                    role.id <= 3 ? 'text-gray-500' : ''
+                                    role.id <= 4 ? 'text-gray-500' : ''
                                   }`}>
                                     {role.name}
                                   </span>
-                                  {role.id <= 3 && (
+                                  {role.id <= 4 && (
                                     <span className="ml-2 text-xs text-gray-400">(System)</span>
                                   )}
+                                </TableCell>
+                                <TableCell className="py-3">
+                                  <span className="font-medium text-gray-700">
+                                    {getRoleName(role.id)}
+                                  </span>
                                 </TableCell>
                                 <TableCell className="py-3">{role.description || '-'}</TableCell>
                                 <TableCell className="py-3">
@@ -3040,23 +3002,13 @@ export default function Settings() {
                                 <TableCell className="py-3">{new Date(role.created_at).toLocaleDateString()}</TableCell>
                                 <TableCell className="py-3">
                                   <div className="flex items-center justify-center space-x-1">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
                                       className="h-8 w-8"
                                       onClick={() => handleEditRole(role)}
-                                      disabled={role.id <= 3}
                                     >
                                       <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8"
-                                      onClick={() => handleDeleteRole(role)}
-                                      disabled={role.id <= 3}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
                                 </TableCell>
@@ -3078,49 +3030,42 @@ export default function Settings() {
                       ) : roles.length === 0 ? (
                         <div className="text-center text-gray-500 p-6">No roles found.</div>
                       ) : (
-                        roles.map((role) => (
+                        roles.map((role, index) => (
                           <div key={role.id} className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
                             <div className="flex justify-between items-start">
                               <div>
+                                <div className="text-xs text-gray-500 mb-1">
+                                  #{((currentPageRoles - 1) * parseInt(perPageRoles)) + index + 1}
+                                </div>
                                 <h4 className="font-semibold text-gray-900">
                                   {role.name}
-                                  {role.id <= 3 && (
+                                  {role.id <= 4 && (
                                     <span className="ml-2 text-xs text-gray-400">(System)</span>
                                   )}
                                 </h4>
+                                <p className="text-sm font-medium text-gray-700 mt-1">Type: {getRoleName(role.id)}</p>
                                 <p className="text-sm text-gray-600 mt-1">{role.description || 'No description'}</p>
                               </div>
                               <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 {role.users_count || 0} users
                               </span>
                             </div>
-                            
+
                             <div className="text-sm text-gray-500">
                               Created: {new Date(role.created_at).toLocaleDateString()}
                             </div>
-                            
-                            {role.id > 3 && (
-                              <div className="flex gap-2 pt-2 border-t">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex-1"
-                                  onClick={() => handleEditRole(role)}
-                                >
-                                  <Edit className="h-3 w-3 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDeleteRole(role)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3 mr-1" />
-                                  Delete
-                                </Button>
-                              </div>
-                            )}
+
+                            <div className="flex gap-2 pt-2 border-t">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1"
+                                onClick={() => handleEditRole(role)}
+                              >
+                                <Edit className="h-3 w-3 mr-1" />
+                                Edit
+                              </Button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -6019,55 +5964,6 @@ export default function Settings() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Add Role Modal */}
-        <Dialog open={addRoleModalOpen} onOpenChange={setAddRoleModalOpen}>
-          <DialogContent style={{ width: '400px', maxWidth: '90vw' }}>
-            <DialogHeader>
-              <DialogTitle>Add New Role</DialogTitle>
-              <DialogDescription>
-                Create a new role with permissions
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="add-role-name">Name</Label>
-                <Input
-                  id="add-role-name"
-                  value={roleFormData.name}
-                  onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })}
-                  placeholder="Enter role name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="add-role-description">Description</Label>
-                <Textarea
-                  id="add-role-description"
-                  value={roleFormData.description}
-                  onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
-                  placeholder="Enter role description"
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setAddRoleModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="button" 
-                onClick={handleSaveAddRole}
-                disabled={saving || !roleFormData.name}
-              >
-                {saving ? 'Creating...' : 'Create Role'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
         {/* Edit Role Modal */}
         <Dialog open={editRoleModalOpen} onOpenChange={setEditRoleModalOpen}>
           <DialogContent style={{ width: '400px', maxWidth: '90vw' }}>
@@ -6112,35 +6008,6 @@ export default function Settings() {
                 disabled={saving || !roleFormData.name}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Delete Role Confirmation Modal */}
-        <Dialog open={deleteRoleModalOpen} onOpenChange={setDeleteRoleModalOpen}>
-          <DialogContent style={{ width: '400px', maxWidth: '90vw' }}>
-            <DialogHeader>
-              <DialogTitle>Delete Role</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete role "{deletingRole?.name}"? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setDeleteRoleModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="button" 
-                variant="destructive"
-                onClick={handleConfirmDeleteRole}
-                disabled={saving}
-              >
-                {saving ? 'Deleting...' : 'Delete'}
               </Button>
             </DialogFooter>
           </DialogContent>

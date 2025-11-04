@@ -99,6 +99,10 @@ export default function DeletedTickets() {
   const [searchTerm, setSearchTerm] = useState('');
   const [totalItems, setTotalItems] = useState(0);
 
+  // Restore confirmation dialog state
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+  const [pendingRestoreTicket, setPendingRestoreTicket] = useState<Ticket | null>(null);
+
   useEffect(() => {
     fetchCustomers();
     // Only fetch agents if user is admin (role_id = 1)
@@ -191,11 +195,20 @@ export default function DeletedTickets() {
     setCurrentPage(page);
   };
 
-  const handleRestoreTicket = async (ticketId: number) => {
+  const handleRestoreClick = (ticket: Ticket) => {
+    setPendingRestoreTicket(ticket);
+    setRestoreConfirmOpen(true);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!pendingRestoreTicket) return;
+
     try {
       // Restore ticket (remove deleted_at)
-      await axios.put(`/tickets/${ticketId}/restore`);
+      await axios.put(`/tickets/${pendingRestoreTicket.id}/restore`);
       toast.success('Ticket restored successfully');
+      setRestoreConfirmOpen(false);
+      setPendingRestoreTicket(null);
       fetchDeletedTickets();
     } catch (error) {
       console.error('Error restoring ticket:', error);
@@ -412,7 +425,7 @@ export default function DeletedTickets() {
                             variant="outline"
                             size="sm"
                             className="text-green-600 border-green-600 hover:bg-green-50 flex-1 sm:flex-initial text-xs sm:text-sm"
-                            onClick={() => handleRestoreTicket(ticket.id)}
+                            onClick={() => handleRestoreClick(ticket)}
                           >
                             <RotateCcw className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                             Restore
@@ -507,6 +520,33 @@ export default function DeletedTickets() {
           </div>
         </div>
       </div>
+
+      {/* Restore Confirmation Dialog */}
+      <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
+        <AlertDialogContent className="w-[90%] sm:w-full max-w-lg mx-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore Ticket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to restore ticket{' '}
+              <strong>#{pendingRestoreTicket?.tracking_number || pendingRestoreTicket?.id}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setRestoreConfirmOpen(false);
+              setPendingRestoreTicket(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRestore}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
