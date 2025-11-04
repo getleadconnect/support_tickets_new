@@ -159,6 +159,8 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
   const [quantity, setQuantity] = useState('1');
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [pendingCloseStatus, setPendingCloseStatus] = useState<string | null>(null);
+  const [completedConfirmOpen, setCompletedConfirmOpen] = useState(false);
+  const [pendingCompletedStatus, setPendingCompletedStatus] = useState<string | null>(null);
   const [totalPrice, setTotalPrice] = useState(0);
   const [showEditTicket, setShowEditTicket] = useState(false);
   const [editIssue, setEditIssue] = useState('');
@@ -1084,6 +1086,20 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
     }
   };
 
+  const handleConfirmCompleted = async () => {
+    if (!pendingCompletedStatus) return;
+
+    try {
+      setStatus(pendingCompletedStatus);
+      await handleUpdateTicket({ newStatus: pendingCompletedStatus });
+      setCompletedConfirmOpen(false);
+      setPendingCompletedStatus(null);
+    } catch (error) {
+      console.error('Error completing ticket:', error);
+      toast.error('Failed to complete ticket');
+    }
+  };
+
   if (!ticket) return null;
 
   return (
@@ -1245,6 +1261,10 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
                     if (value === '3') {
                       setPendingCloseStatus(value);
                       setCloseConfirmOpen(true);
+                    } else if (value === '4') {
+                      // Check if status is being changed to "Completed" (value = 4)
+                      setPendingCompletedStatus(value);
+                      setCompletedConfirmOpen(true);
                     } else {
                       setStatus(value);
                       handleUpdateTicket({ newStatus: value });
@@ -2495,6 +2515,33 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmClose}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status Change to Completed Confirmation Dialog */}
+      <AlertDialog open={completedConfirmOpen} onOpenChange={setCompletedConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Complete Ticket</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to mark ticket <strong className="font-bold">#{currentTicket?.tracking_number}</strong> as completed?
+              This will set the ticket status to "Completed".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setCompletedConfirmOpen(false);
+              setPendingCompletedStatus(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCompleted}
               className="bg-blue-500 hover:bg-blue-600 text-white"
             >
               OK

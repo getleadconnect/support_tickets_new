@@ -164,6 +164,9 @@ export default function Tickets() {
   const [editSelectedNotifyUsers, setEditSelectedNotifyUsers] = useState<number[]>([]);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [pendingCloseTicket, setPendingCloseTicket] = useState<Ticket | null>(null);
+  const [completedConfirmOpen, setCompletedConfirmOpen] = useState(false);
+  const [pendingCompletedTicket, setPendingCompletedTicket] = useState<Ticket | null>(null);
+  const [pendingCompletedStatus, setPendingCompletedStatus] = useState<string>('');
   const [addFormData, setAddFormData] = useState<any>({});
   const [showCreatedByMe, setShowCreatedByMe] = useState(false);
 
@@ -590,6 +593,33 @@ export default function Tickets() {
     }
   };
 
+  const handleConfirmCompleted = async () => {
+    if (!pendingCompletedTicket) return;
+
+    try {
+      console.log('Updating status to: Completed (4)');
+      const response = await axios.put(`/tickets/${pendingCompletedTicket.id}`, {
+        status: parseInt(pendingCompletedStatus),
+        priority: pendingCompletedTicket.priority,
+        issue: pendingCompletedTicket.issue,
+        description: pendingCompletedTicket.description,
+        customer_id: pendingCompletedTicket.customer_id
+      });
+      console.log('Update response:', response.data);
+      toast.success('Ticket marked as completed successfully');
+
+      setCompletedConfirmOpen(false);
+      setPendingCompletedTicket(null);
+      setPendingCompletedStatus('');
+
+      // Refresh the tickets list
+      await fetchTickets();
+    } catch (error) {
+      console.error('Error completing ticket:', error);
+      console.error('Error details:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Failed to complete ticket');
+    }
+  };
 
   const handleTicketClick = (ticket: Ticket) => {
     setSelectedTicket(ticket);
@@ -960,6 +990,11 @@ export default function Tickets() {
                           if (value === '3') {
                             setPendingCloseTicket(ticket);
                             setCloseConfirmOpen(true);
+                          } else if (value === '4') {
+                            // Check if status is being changed to "Completed" (value = 4)
+                            setPendingCompletedTicket(ticket);
+                            setPendingCompletedStatus(value);
+                            setCompletedConfirmOpen(true);
                           } else {
                             // For other statuses, update directly
                             (async () => {
@@ -1522,6 +1557,34 @@ export default function Tickets() {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirmClose}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Complete Ticket Confirmation Dialog */}
+        <AlertDialog open={completedConfirmOpen} onOpenChange={setCompletedConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Complete Ticket</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to mark ticket <strong className="font-bold">#{pendingCompletedTicket?.tracking_number}</strong> as completed?
+                This will set the ticket status to "Completed".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setCompletedConfirmOpen(false);
+                setPendingCompletedTicket(null);
+                setPendingCompletedStatus('');
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmCompleted}
                 className="bg-blue-500 hover:bg-blue-600 text-white"
               >
                 OK
