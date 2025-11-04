@@ -319,16 +319,17 @@ public function getTicketLabels()
           /* ---- To send whatsapp message ----- service request -------------- */
            try
             {
-                    $data=[
-                        "customer_name"=>$customer->name,
-                        "user_mobile"=>$customer->country_code.$customer->mobile,
-                        "tracking_id"=>$trackingNumber,
-                        "template_id"=>"259094", //wabis id
-                        "delivered_date"=>null
-                    ];
+                $data=[
+                    "customer_name"=>$customer->name,
+                    "user_mobile"=>$customer->country_code.$customer->mobile,
+                    "tracking_id"=>$trackingNumber,
+                    "template_id"=>"259094", //wabis id
+                    "delivered_date"=>null,
+                    "delivery_text"=>null
+                ];
 
-                    $send_response=$this->sendServiceMessages($data);
-                    \Log::info($send_response);
+                $send_response=$this->sendServiceMessages($data);
+                \Log::info($send_response);
             }
             catch (\Exception $e) {
                 \Log::info($e->getMessage());

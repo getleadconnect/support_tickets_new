@@ -4,14 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Invoice;
+use App\Models\Customer;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Services\WhatsappApiService;
+use Log;
+
 
 class PaymentController extends Controller
 {
+    use WhatsappApiService;
+
     public function index(Request $request)
     {
         try {
@@ -127,11 +133,38 @@ class PaymentController extends Controller
 
 
             // Update status and closed at in tickets
-            $ticket=Ticket::where('id',$invoice->ticket_id)->update([
-                'status' => 3,
-                'closed_at' => now()
-            ]);
+            $tkt=Ticket::where('id',$invoice->ticket_id)->first();
+            $oldStatus=$tkt->status;
+            
+            $tkt->status=3;
+            $tkt->closed_at=now();
+            $ticket=$tkt->save();
+            
+            if($oldStatus!=3 && $ticket==true)
+            {
 
+               // ---- To send whatsapp message ----- delivered message --close ticket------- 
+                try
+                    {
+                        $customer=Customer::where('id',$tkt->customer_id)->first();
+                        $data=[
+                            "customer_name"=>$customer->name,
+                            "user_mobile"=>$customer->country_code.$customer->mobile,
+                            "tracking_id"=>$tkt->tracking_number,
+                            "template_id"=>"259187", //wabis id
+                            "delivered_date"=>date('d-m-Y'),
+                            "delivery_text"=>"Your device/service request with *ID: ".$tkt->tracking_number
+                        ];
+
+                        $send_response=$this->sendServiceMessages($data);
+                        \Log::info($send_response);
+                    }
+                    catch (\Exception $e) {
+                        \Log::info($e->getMessage());
+                    }
+                //-------------------------------------------------------------------
+            }
+            
 
             DB::commit();
 
@@ -143,6 +176,7 @@ class PaymentController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::info($e->getMessage());
             return response()->json([
                 'message' => 'Failed to record payment',
                 'error' => $e->getMessage()

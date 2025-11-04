@@ -357,7 +357,8 @@ class TicketController extends Controller
                     "user_mobile"=>$customer->country_code.$customer->mobile,
                     "tracking_id"=>$ticket->tracking_number,
                     "template_id"=>"259094", //wabis id
-                    "delivered_date"=>null
+                    "delivered_date"=>null,
+                    "delivery_text"=>null
                 ];
 
                 $send_response=$this->sendServiceMessages($data);
@@ -503,7 +504,8 @@ class TicketController extends Controller
                             "user_mobile"=>$customer->country_code.$customer->mobile,
                             "tracking_id"=>$ticket->tracking_number,
                             "template_id"=>"259096", //wabis id
-                            "delivered_date"=>null
+                            "delivered_date"=>null,
+                            "delivery_text"=>null
                         ];
 
                         $send_response=$this->sendServiceMessages($data);
@@ -526,8 +528,9 @@ class TicketController extends Controller
                             "customer_name"=>$customer->name,
                             "user_mobile"=>$customer->country_code.$customer->mobile,
                             "tracking_id"=>$ticket->tracking_number,
-                            "template_id"=>"259106", //wabis id
-                            "delivered_date"=>$ticket->closed_at
+                            "template_id"=>"259187", //wabis id
+                            "delivered_date"=>date('d-m-Y'),
+                            "delivery_text"=>"Your device/service request with *ID: ".$ticket->tracking_number
                         ];
 
                         $send_response=$this->sendServiceMessages($data);
