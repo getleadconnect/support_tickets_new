@@ -556,3 +556,100 @@ sudo apt-get install php8.2-xml php8.2-mysql php8.2-mbstring php8.2-curl
 │       System        │  ← text-slate-500
 └─────────────────────┘
 ```
+
+### Ticket and Customer Management Updates (Added: 2025-01-04)
+
+#### 1. Reopen and Restore Confirmation Dialogs
+
+**Closed Tickets - Reopen Confirmation** (`resources/js/pages/closed-tickets.tsx`):
+- Added confirmation dialog for "Reopen" button
+- State variables: `reopenConfirmOpen`, `pendingReopenTicket`
+- AlertDialog displays: "Are you sure you want to reopen ticket **#[tracking_number]**?"
+- User must confirm before ticket status changes to "Open"
+
+**Deleted Tickets - Restore Confirmation** (`resources/js/pages/deleted-tickets.tsx`):
+- Added confirmation dialog for "Restore" button
+- State variables: `restoreConfirmOpen`, `pendingRestoreTicket`
+- AlertDialog displays: "Are you sure you want to restore ticket **#[tracking_number]**?"
+- User must confirm before ticket is restored from soft delete
+
+#### 2. Completed Status Confirmation
+
+**Implementation Locations**:
+1. **Tickets List Page** (`resources/js/pages/tickets.tsx`):
+   - Added state variables: `completedConfirmOpen`, `pendingCompletedTicket`, `pendingCompletedStatus`
+   - Status dropdown intercepts "Completed" (value=4) selection
+   - AlertDialog displays: "Are you sure you want to mark ticket **#[tracking_number]** as completed?"
+   - Prevents accidental status changes to "Completed"
+
+2. **Ticket Details Modal** (`resources/js/components/TicketDetailsModal.tsx`):
+   - Added state variables: `completedConfirmOpen`, `pendingCompletedStatus`
+   - Status Select intercepts "Completed" (value=4) selection
+   - Same confirmation dialog pattern as tickets list
+   - Consistent user experience across both locations
+
+#### 3. Roles Management UI Improvements
+
+**Settings Page - Roles Tab** (`resources/js/pages/settings.tsx`):
+
+**Removed Features**:
+- "Add Role" section and form (left column, 25% width)
+- "Add Role" modal dialog
+- Delete role functionality and button
+- All state/handlers for add and delete operations
+
+**Added Features**:
+- **"Sl No" Column**: Serial number column with pagination-aware numbering
+  - Desktop table: First column before "Name"
+  - Mobile cards: Displays as `#[number]` at top of card
+  - Formula: `((currentPage - 1) * perPage) + index + 1`
+
+- **"Type" Column**: Role type classification
+  - role_id = 1: "Admin"
+  - role_id = 2: "Agent"
+  - role_id = 3: "Manager"
+  - role_id = 4: "Branch Admin"
+  - Uses `getRoleName(role.id)` function
+  - Displayed between "Name" and "Description" columns
+
+**Updated Behavior**:
+- Edit button now active for ALL roles (including system roles 1-4)
+- System roles (id 1-4) marked with "(System)" label
+- Table colSpan updated from 6 to 7 for new Sl No column
+- Grid layout changed from `lg:grid-cols-4` to single column
+
+#### 4. WhatsApp Number Standardization
+
+**Changed "Mobile Number" to "Whatsapp Number"** across all customer forms:
+
+**Customer Registration Page** (`resources/js/pages/register.tsx`):
+- Label: "Whatsapp Number" (instead of "Mobile Number")
+- Placeholder: "Enter whatsapp number"
+- Validation error: "Please enter a valid 10-digit whatsapp number"
+- **Replaced**: Select dropdown with 170+ country codes
+- **Implemented**: `CountryCodePicker` component with flags and search
+- Default country code: +91 (India) 🇮🇳
+
+**CountryCodePicker Component** (`resources/js/components/CountryCodePicker.tsx`):
+- Custom country selector with flag emojis (75+ countries)
+- Built-in search functionality (by country name or code)
+- Dropdown: 300px wide with scrollable list
+- Used in: Customer registration, Add Customer modal, Edit Customer modal
+- Features: Flag display, compact format (e.g., "🇮🇳 +91"), responsive design
+
+**Add Customer Modal** (`resources/js/components/AddCustomerModal.tsx`):
+- Label: "Whatsapp Number" (was "Contact Number")
+- Uses CountryCodePicker component
+- Consistent with registration page design
+
+**Customers Page Modals** (`resources/js/pages/customers.tsx`):
+- **Add Customer Modal**: Label and placeholder updated to "Whatsapp Number"
+- **Edit Customer Modal**: Label and placeholder updated to "Whatsapp Number"
+- Both use CountryCodePicker with flags
+- Number-only input validation with maxLength=15
+
+**Benefits**:
+- Consistent terminology across the entire application
+- Better user experience with visual country flags
+- Search capability for quick country selection
+- Optimized bundle size (reduced from 221.04 kB to 215.62 kB)

@@ -22,7 +22,8 @@ import {
   MessageCircle,
   HelpCircle,
   Calendar,
-  ListTodo
+  ListTodo,
+  Search
 } from 'lucide-react';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -68,6 +69,11 @@ const navigationItems: NavItem[] = [
         title: 'Deleted Tickets',
         href: '/deleted-tickets',
         icon: Trash2,
+      },
+      {
+        title: 'Tracking Ticket',
+        href: '/tracking-ticket',
+        icon: Search,
       },
     ],
   },
@@ -185,8 +191,8 @@ export function Sidebar({ className, ...props }: SidebarProps) {
           const data = await response.json();
           if (data.company) {
             setCompanyLogo(data.company.logo);
-            if (data.company.name) {
-              setCompanyName(data.company.name);
+            if (data.company.company_name) {
+              setCompanyName(data.company.company_name);
             }
           }
         }
@@ -342,15 +348,37 @@ export function Sidebar({ className, ...props }: SidebarProps) {
                         }).map((child) => {
                           const ChildIcon = child.icon || Ticket;
                           const isChildItemActive = location.pathname === child.href;
-                          
+
+                          // Render Tracking Ticket as external link in new tab
+                          if (child.title === 'Tracking Ticket') {
+                            return (
+                              <a
+                                key={child.href}
+                                href={child.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={cn(
+                                  "group flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                                  "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                )}
+                              >
+                                <ChildIcon className={cn(
+                                  "mr-3 h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110",
+                                  "text-slate-500"
+                                )} />
+                                <span className="font-medium">{child.title}</span>
+                              </a>
+                            );
+                          }
+
                           return (
                             <Link
                               key={child.href}
                               to={child.href}
                               className={cn(
                                 "group flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200",
-                                isChildItemActive 
-                                  ? "bg-purple-100 text-purple-900 shadow-sm" 
+                                isChildItemActive
+                                  ? "bg-purple-100 text-purple-900 shadow-sm"
                                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                               )}
                             >

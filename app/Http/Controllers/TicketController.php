@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\ProductTicket;
 use App\Models\Notification;
 use App\Models\Customer;
+use App\Models\TicketHistory;
 use Illuminate\Support\Facades\DB;
 use Auth;
 use App\Services\WhatsappApiService;
@@ -344,6 +345,15 @@ class TicketController extends Controller
                 'notifiable_id'=>1,
                 'data'=>$notMsg
             ]);
+
+            // Insert into ticket_histories table for new ticket creation
+            TicketHistory::create([
+                'ticket_id' => $ticket->id,
+                'tracking_id' => $ticket->tracking_number,
+                'customer_id' => $ticket->customer_id,
+                'comment' => $this->getStatusComment($ticket->status, $ticket->tracking_number),
+                'created_by' => auth()->id()
+            ]);
         }
 
           /* ---- To send whatsapp message ----- service request -------------- */
@@ -486,14 +496,24 @@ class TicketController extends Controller
             $this->createActivity(
                 $ticket,
                 'Ticket Status Changed',
-                sprintf('Status changed from %s to %s', 
+                sprintf('Status changed from %s to %s',
                     $oldStatus ? $oldStatus->status : 'None',
                     $newStatus ? $newStatus->status : 'None'
                 ),
                 ['status_id' => $validated['status']]
             );
 
-                if ( $validated['status']==4) {
+            // Insert into ticket_histories table with status comment
+            TicketHistory::create([
+                'ticket_id' => $ticket->id,
+                'tracking_id' => $ticket->tracking_number,
+                'customer_id' => $ticket->customer_id,
+                'comment' => $this->getStatusComment($validated['status'], $ticket->tracking_number),
+                'created_by' => auth()->id()
+            ]);
+
+
+                if ($validated['status']==4) {
 
                 // ---- To send whatsapp message ----- completed message --------- 
                 try
@@ -1448,6 +1468,29 @@ class TicketController extends Controller
         Activity::create($activityData);
     }
 
+    /**
+     * Get status comment message for ticket history
+     */
+    private function getStatusComment($statusId, $trackingNumber)
+    {
+        $date = date('d-m-Y');
+
+        switch ($statusId) {
+            case 1:
+                return "To create new tickets successfully with ID: {$trackingNumber} on {$date}";
+            case 2:
+                return "Your request with service Id: {$trackingNumber} work in progress, Dated {$date}";
+            case 3:
+                return "Your device/service request with ID: {$trackingNumber} has been successfully delivered on {$date}";
+            case 4:
+                return "Your device/service request with ID: {$trackingNumber} has been successfully completed and is now ready for delivery.";
+            case 5:
+                return "Your device/service request with ID: {$trackingNumber} has been successfully returned on {$date}.";
+            default:
+                return "Status updated for ticket {$trackingNumber} on {$date}";
+        }
+    }
+
 
 
 public function getTicketStatus()
@@ -1717,7 +1760,57 @@ private function getMonthlyTicketData()
 
 //-----------------------------------------------------------------------------------------------
 
+    /**
+     * Track ticket by tracking number
+     */
+    public function trackTicket(Request $request)
+    {
+        $validated = $request->validate([
+            'tracking_number' => 'required|string'
+        ]);
 
+        // Find ticket by tracking number (including soft deleted)
+        $ticket = Ticket::withTrashed()
+            ->with('ticketStatus:id,status,color_code')
+            ->where('tracking_number', $validated['tracking_number'])
+            ->first();
+
+        if (!$ticket) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ticket not found with this tracking number'
+            ], 404);
+        }
+
+        // Get ticket histories
+        $histories = TicketHistory::where('ticket_id', $ticket->id)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Get spare parts used
+        $spareParts = ProductTicket::where('ticket_id', $ticket->id)
+            ->with('product:id,name')
+            ->get()
+            ->pluck('product.name')
+            ->filter()
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'tracking_number' => $ticket->tracking_number,
+                'issue' => $ticket->issue,
+                'description' => $ticket->description,
+                'status' => $ticket->ticketStatus ? [
+                    'id' => $ticket->ticketStatus->id,
+                    'name' => $ticket->ticketStatus->status,
+                    'color' => $ticket->ticketStatus->color_code
+                ] : null,
+                'histories' => $histories,
+                'spare_parts' => $spareParts
+            ]
+        ], 200);
+    }
 
 
 

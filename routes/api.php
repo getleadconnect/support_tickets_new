@@ -30,14 +30,13 @@ use Illuminate\Support\Facades\Route;
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register-customer', [CustomerController::class, 'registerCustomer']);
+Route::post('/track-ticket', [TicketController::class, 'trackTicket']);
+Route::get('/company', [CompanyController::class, 'getCompanyInfo']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
-
-    // Company routes
-    Route::get('/company', [CompanyController::class, 'getCompanyInfo']);
     
     // Branch Dashboard route
     Route::get('/branch-dashboard-stats', [BranchDashboardController::class, 'getStats']);
@@ -108,7 +107,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/ticket-statuses', [TicketController::class, 'getTicketStatus']);
        // Priorities routes
     Route::get('/priorities', [TicketController::class, 'getPriorities']);
-    
+
     // Branches routes (old endpoint for compatibility)
     Route::get('/branches', [TicketController::class, 'getBranches']);
     

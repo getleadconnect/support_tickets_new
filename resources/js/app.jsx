@@ -8,6 +8,7 @@ import { Toaster } from 'react-hot-toast';
 // Eager load only critical components
 import { Login } from './pages/login';
 import { Register } from './pages/register';
+import PublicTrackingTicket from './pages/public-tracking-ticket';
 
 // Lazy load all other pages
 const DashboardRouter = lazy(() => import('./components/DashboardRouter'));
@@ -102,6 +103,9 @@ function App() {
                     } />
                     <Route path="/register" element={
                         <Register />
+                    } />
+                    <Route path="/tracking-ticket" element={
+                        <PublicTrackingTicket />
                     } />
                     <Route path="/" element={
                         <ProtectedRoute>
