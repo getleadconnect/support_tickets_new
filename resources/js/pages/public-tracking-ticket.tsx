@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Search } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -96,18 +96,14 @@ export default function PublicTrackingTicket() {
       if (response.data.success) {
         setTrackingData(response.data.data);
       } else {
-        toast.error(response.data.message || 'Ticket not found');
         setTrackingData(null);
       }
     } catch (error: any) {
       console.error('Error tracking ticket:', error);
-      if (error.response?.status === 404) {
-        toast.error('Ticket not found with this tracking number');
-      } else if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error('Failed to track ticket. Please try again.');
-      }
+      // Only show error toast once with unique ID to prevent duplicates
+      toast.error('Ticket not found with this tracking number', {
+        id: 'track-auto-error'
+      });
       setTrackingData(null);
     } finally {
       setIsLoading(false);
@@ -133,18 +129,14 @@ export default function PublicTrackingTicket() {
         setTrackingData(response.data.data);
         toast.success('Ticket found successfully!');
       } else {
-        toast.error(response.data.message || 'Ticket not found');
         setTrackingData(null);
       }
     } catch (error: any) {
       console.error('Error tracking ticket:', error);
-      if (error.response?.status === 404) {
-        toast.error('Ticket not found with this tracking number');
-      } else if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error('Failed to track ticket. Please try again.');
-      }
+      // Only show error toast once with unique ID
+      toast.error('Ticket not found with this tracking number', {
+        id: 'track-search-error'
+      });
       setTrackingData(null);
     } finally {
       setIsLoading(false);
@@ -153,30 +145,6 @@ export default function PublicTrackingTicket() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50">
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-            fontSize: '14px',
-          },
-          success: {
-            duration: 3000,
-            style: {
-              background: '#10b981',
-            },
-          },
-          error: {
-            duration: 4000,
-            style: {
-              background: '#ef4444',
-            },
-          },
-        }}
-      />
-
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
