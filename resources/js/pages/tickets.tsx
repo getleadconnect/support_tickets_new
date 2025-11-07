@@ -110,6 +110,10 @@ interface Ticket {
     name: string;
     color?: string;
   };
+  branch?: {
+    id: number;
+    branch_name: string;
+  };
 }
 
 interface Customer {
@@ -150,6 +154,7 @@ export default function Tickets() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCustomer, setFilterCustomer] = useState<string>('all');
   const [filterAgent, setFilterAgent] = useState<string>('all');
+  const [filterBranch, setFilterBranch] = useState<string>('all');
   const [filterTicketType, setFilterTicketType] = useState<string>('all');
   const [filterTicketLabel, setFilterTicketLabel] = useState<string>('all');
   const [ticketLabels, setTicketLabels] = useState<any[]>([]);
@@ -210,6 +215,7 @@ export default function Tickets() {
           status: filterStatus !== 'all' ? filterStatus : null,
           customer_id: filterCustomer !== 'all' ? filterCustomer : null,
           agent_id: filterAgent !== 'all' ? filterAgent : null,
+          branch_id: filterBranch !== 'all' ? filterBranch : null,
           start_date: filterStartDate || null,
           end_date: filterEndDate || null,
           ticket_type: filterTicketType !== 'all' ? filterTicketType : null,
@@ -687,6 +693,7 @@ export default function Tickets() {
     setFilterStatus('all');
     setFilterCustomer('all');
     setFilterAgent('all');
+    setFilterBranch('all');
     setFilterTicketType('all');
     setFilterTicketLabel('all');
     setShowCreatedByMe(false);
@@ -839,6 +846,23 @@ export default function Tickets() {
                   </Select>
                 )}
 
+                {/* Branch Filter - Only show for admin users (role_id = 1) */}
+                {user?.role_id === 1 && (
+                  <Select value={filterBranch} onValueChange={setFilterBranch}>
+                    <SelectTrigger className="h-9 w-full sm:w-44 lg:w-36 text-sm">
+                      <SelectValue placeholder="All Branches" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Branches</SelectItem>
+                      {branches.map((branch) => (
+                        <SelectItem key={branch.id} value={String(branch.id)}>
+                          {branch.branch_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
                 {/* Ticket Type Filter */}
                 <Select value={filterTicketType} onValueChange={setFilterTicketType}>
                   <SelectTrigger className="h-9 w-full sm:w-36 lg:w-32 text-sm">
@@ -938,10 +962,17 @@ export default function Tickets() {
             ) : (
               displayTickets.map((ticket) => (
                 <div key={ticket.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  {/* Branch Name at top */}
+                  {ticket.branch?.branch_name && (
+                    <div className="text-xs mb-2" style={{ color: '#4f46e5' }}>
+                      {ticket.branch.branch_name}
+                    </div>
+                  )}
+
                   {/* Mobile Layout */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                      <h3 
+                      <h3
                         className="text-base sm:text-lg font-medium cursor-pointer hover:opacity-80 transition-opacity"
                         style={{ color: '#3883c9' }}
                         onClick={() => handleTicketClick(ticket)}

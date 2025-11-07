@@ -169,7 +169,6 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [showVerificationAlert, setShowVerificationAlert] = useState(false);
   
   // Additional Fields states
   const [additionalFields, setAdditionalFields] = useState<any[]>([]);
@@ -1246,6 +1245,12 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
                 <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" />
                 <span className="text-xs sm:text-sm">Email :</span>
               </div>
+
+              <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+                <span className="text-xs sm:text-sm font-medium" style={{ color: '#4f46e5' }}>
+                  Branch: {currentTicket?.branch?.branch_name || 'N/A'}
+                </span>
+              </div>
             </div>
 
             {/* Update Ticket Section */}
@@ -1644,17 +1649,14 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
           <div className="w-full sm:w-[70%] sm:min-w-[500px] bg-white flex flex-col">
             {/* Top buttons */}
             <div className="flex justify-end items-center px-4 sm:px-6 py-2 sm:py-3 border-b border-[#e4e4e4]">
-              <Button 
+              <Button
                 variant="default"
                 size="sm"
                 onClick={() => {
-                  // Check if ticket is verified
-                  if (!currentTicket.verified_at) {
-                    setShowVerificationAlert(true);
-                  } else {
-                    setShowInvoiceModal(true);
-                  }
+                  setShowInvoiceModal(true);
                 }}
+                disabled={!currentTicket.verified_at}
+                title={!currentTicket.verified_at ? "Ticket must be verified before creating an invoice" : "Create invoice for this ticket"}
                 className="text-xs sm:text-sm h-7 sm:h-8"
               >
                 Add Invoice
@@ -1709,7 +1711,7 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
               
               <div className="flex-1 overflow-y-auto">
                 <TabsContent value="activity" className="p-3 sm:p-6 m-0">
-                  <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '400px', height: 'auto' }}>
+                  <div className="overflow-y-auto custom-scrollbar" style={{ maxHeight: '480px', height: 'auto' }}>
                     <div className="space-y-4 pr-2">
                       {currentTicket && currentTicket.activity && currentTicket.activity.length > 0 ? (
                       currentTicket.activity.map((activity, index) => (
@@ -2471,30 +2473,6 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
           customerName={currentTicket.customer?.name || ''}
         />
       )}
-
-      {/* Verification Required Alert */}
-      <AlertDialog open={showVerificationAlert} onOpenChange={setShowVerificationAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ticket Verification Required</AlertDialogTitle>
-            <AlertDialogDescription>
-              This ticket must be verified before creating an invoice. Please check and verify the issue is resolved.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowVerificationAlert(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={() => {
-              setShowVerificationAlert(false);
-              onClose(); // Close the ticket details modal
-              navigate('/verify-tickets'); // Navigate to verify tickets page
-            }}>
-              Verify Ticket
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Status Change to Closed Confirmation Dialog */}
       <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>

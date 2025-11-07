@@ -95,6 +95,8 @@ class InvoiceController extends Controller
             'payment_status' => 'nullable|string',
             'invoice_date' => 'required|date',
             'products' => 'nullable|array',
+            'service_type' => 'nullable|in:Shop,Outsource',
+            'description' => 'nullable|string|max:1000',
         ]);
 
         try {
@@ -106,7 +108,7 @@ class InvoiceController extends Controller
 
             // Get the current user
             $user = Auth::user();
-            
+
             // Create invoice
             $invoice = Invoice::create([
                 'invoice_id' => $invoiceId,
@@ -119,8 +121,18 @@ class InvoiceController extends Controller
                 'payment_method' => $validated['payment_mode'],
                 'status' => $validated['payment_status'] ?? 'pending',
                 'invoice_date' => $validated['invoice_date'],
+                'service_type' => $validated['service_type'] ?? null,
+                'description' => $validated['description'] ?? null,
                 'created_by' => Auth::id() ?? 1,
             ]);
+
+            // Update ticket's service_type if provided
+            if (!empty($validated['service_type'])) {
+                $ticket = \App\Models\Ticket::find($validated['ticket_id']);
+                if ($ticket) {
+                    $ticket->update(['service_type' => $validated['service_type']]);
+                }
+            }
 
             // If products are provided, you can store them in a separate invoice_items table if needed
             // For now, the products are already linked through the ticket's product_tickets table
@@ -379,5 +391,35 @@ class InvoiceController extends Controller
         }
         
         return 'one thousand fifty'; // Simplified for the example
+    }
+
+    /**
+     * Get branch-wise monthly revenue separated by service type
+     */
+    public function getBranchMonthlyRevenue(Request $request)
+    {
+        $year = $request->get('year', date('Y'));
+        $month = $request->get('month', date('m'));
+
+        // Get all branches with their monthly revenue
+        $branches = DB::table('branches')
+            ->leftJoin('invoices', function($join) use ($year, $month) {
+                $join->on('branches.id', '=', 'invoices.branch_id')
+                     ->whereYear('invoices.invoice_date', '=', $year)
+                     ->whereMonth('invoices.invoice_date', '=', $month)
+                     ->where('invoices.status', '=', 'paid');
+            })
+            ->select(
+                'branches.id',
+                'branches.branch_name',
+                DB::raw('SUM(CASE WHEN invoices.service_type = "Shop" THEN invoices.net_amount ELSE 0 END) as shop_revenue'),
+                DB::raw('SUM(CASE WHEN invoices.service_type = "Outsource" THEN invoices.net_amount ELSE 0 END) as outsource_revenue'),
+                DB::raw('SUM(CASE WHEN invoices.service_type IS NOT NULL THEN invoices.net_amount ELSE 0 END) as total_revenue')
+            )
+            ->groupBy('branches.id', 'branches.branch_name')
+            ->orderBy('branches.branch_name')
+            ->get();
+
+        return response()->json($branches);
     }
 }

@@ -340,8 +340,9 @@ export function Sidebar({ className, ...props }: SidebarProps) {
                     )}>
                       <div className="ml-4 pl-3 border-l-2 border-slate-200 space-y-1 py-1">
                         {item.children.filter((child) => {
-                          // Hide "Verify Tickets" for agents (role_id = 2)
-                          if (currentUser && currentUser.role_id === 2 && child.title === 'Verify Tickets') {
+                          // Show "Verify Tickets" only for Admin (role_id=1) and Branch Admin (role_id=4)
+                          if (child.title === 'Verify Tickets' && currentUser &&
+                              currentUser.role_id !== 1 && currentUser.role_id !== 4) {
                             return false;
                           }
                           return true;

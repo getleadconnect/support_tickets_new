@@ -1813,11 +1813,11 @@ export default function Settings() {
   
   const handleAddTicketLabel = async () => {
     if (!newTicketLabelName.trim() || !newTicketLabelColor) return;
-    
+
     setSavingTicketLabel(true);
     try {
       const response = await axios.post('/ticket-labels-management', {
-        label_name: newTicketLabelName.trim(),
+        label: newTicketLabelName.trim(),
         color: newTicketLabelColor
       });
       
@@ -1850,11 +1850,11 @@ export default function Settings() {
   
   const handleUpdateTicketLabel = async () => {
     if (!editingTicketLabel || !editTicketLabelName.trim() || !editTicketLabelColor) return;
-    
+
     setSavingTicketLabel(true);
     try {
       const response = await axios.put(`/ticket-labels-management/${editingTicketLabel.id}`, {
-        label_name: editTicketLabelName.trim(),
+        label: editTicketLabelName.trim(),
         color: editTicketLabelColor,
         active: editingTicketLabel.active
       });

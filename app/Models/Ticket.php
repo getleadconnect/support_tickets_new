@@ -15,7 +15,7 @@ class Ticket extends Model
 
     protected $guarded = [];
 
-    protected $fillable = ['id', 'issue', 'description', 'customer_id', 'priority', 'status', 'due_date', 'ticket_type', 'branch_id', 'tracking_number', 'due_date', 'created_by', 'slug', 'service_id', 'closed_time', 'closed_at', 'branch', 'label', 'verified_at', 'remarks'];
+    protected $fillable = ['id', 'issue', 'description', 'customer_id', 'priority', 'status', 'due_date', 'ticket_type', 'branch_id', 'tracking_number', 'due_date', 'created_by', 'slug', 'service_id', 'service_type', 'closed_time', 'closed_at', 'branch', 'label', 'verified_at', 'remarks'];
 
     protected $table = 'tickets';
 

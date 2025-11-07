@@ -33,7 +33,7 @@ class TicketController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $query = Ticket::with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'activity.user', 'activity.status', 'activity.priority'])
+        $query = Ticket::with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'branch', 'activity.user', 'activity.status', 'activity.priority'])
         ->where('status','!=',3);
         
         // Filter tickets based on user role
@@ -111,6 +111,10 @@ class TicketController extends Controller
             });
         }
 
+        // Branch filter - filter tickets by branch
+        if ($request->has('branch_id') && $request->branch_id != null && $request->branch_id != 'all') {
+            $query->where('branch_id', $request->branch_id);
+        }
 
         // Date range filter
         if ($request->has('start_date') && $request->start_date != null) {
@@ -394,7 +398,7 @@ class TicketController extends Controller
     public function show(Ticket $ticket)
     {
         return response()->json(
-            $ticket->load(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'activity.user', 'activity.status', 'activity.priority'])
+            $ticket->load(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'branch', 'activity.user', 'activity.status', 'activity.priority'])
         );
     }
 
@@ -776,7 +780,7 @@ class TicketController extends Controller
     {
         $user = auth()->user();
         $query = Ticket::onlyTrashed()
-            ->with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel']);
+            ->with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'branch']);
 
         // Filter tickets based on user role
         if ($user->role_id == 2) {

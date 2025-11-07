@@ -25,14 +25,14 @@ interface PayInvoiceModalProps {
   onPaymentSuccess: () => void;
 }
 
-export function PayInvoiceModal({ 
-  isOpen, 
-  onClose, 
+export function PayInvoiceModal({
+  isOpen,
+  onClose,
   invoice,
-  onPaymentSuccess 
+  onPaymentSuccess
 }: PayInvoiceModalProps) {
   const [loading, setLoading] = useState(false);
-  const [discount, setDiscount] = useState<string>('');
+  const [discount, setDiscount] = useState<string>('0');
   const [paymentMode, setPaymentMode] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,7 +67,7 @@ export function PayInvoiceModal({
   };
 
   const handleClose = () => {
-    setDiscount('');
+    setDiscount('0');
     setPaymentMode('');
     onClose();
   };
@@ -123,21 +123,19 @@ export function PayInvoiceModal({
               step="0.01"
               min="0"
               max={invoice.total_amount}
-              placeholder="discount"
+              placeholder="Enter discount amount"
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
               className="mt-1"
             />
           </div>
 
-          {discount && parseFloat(discount) > 0 && (
-            <div>
-              <Label className="text-sm font-medium">Final Amount</Label>
-              <div className="mt-1 p-2 bg-green-50 rounded text-sm font-semibold text-green-700">
-                {finalAmount.toFixed(2)}
-              </div>
+          <div>
+            <Label className="text-sm font-medium">Final Amount</Label>
+            <div className="mt-1 p-2 bg-green-50 rounded text-sm font-semibold text-green-700">
+              ₹{finalAmount.toFixed(2)}
             </div>
-          )}
+          </div>
 
           <div>
             <Label htmlFor="paymentMode" className="text-sm font-medium">Payment Mode</Label>

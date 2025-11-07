@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -27,16 +28,18 @@ interface AddInvoiceModalProps {
   customerName: string;
 }
 
-export function AddInvoiceModal({ 
-  isOpen, 
-  onClose, 
-  ticketId, 
+export function AddInvoiceModal({
+  isOpen,
+  onClose,
+  ticketId,
   customerId,
-  customerName 
+  customerName
 }: AddInvoiceModalProps) {
   const [loading, setLoading] = useState(false);
   const [serviceCharge, setServiceCharge] = useState<string>('');
   const [paymentMode, setPaymentMode] = useState<string>('');
+  const [serviceType, setServiceType] = useState<string>('');
+  const [description, setDescription] = useState<string>('');
   const [productTotal, setProductTotal] = useState<number>(0);
   const [products, setProducts] = useState<any[]>([]);
   const [checkingInvoice, setCheckingInvoice] = useState(true);
@@ -47,6 +50,8 @@ export function AddInvoiceModal({
     // Reset states when closing
     setServiceCharge('');
     setPaymentMode('');
+    setServiceType('');
+    setDescription('');
     setInvoiceExists(false);
     setExistingInvoice(null);
     setCheckingInvoice(true);
@@ -120,6 +125,8 @@ export function AddInvoiceModal({
         payment_mode: paymentMode,
         payment_status: 'Pending',
         invoice_date: new Date().toISOString().split('T')[0],
+        service_type: serviceType || null,
+        description: description || null,
         products: products.map(p => ({
           product_id: p.product_id,
           quantity: p.quantity,
@@ -213,6 +220,19 @@ export function AddInvoiceModal({
           </div>
 
           <div>
+            <Label htmlFor="serviceType">Service Type</Label>
+            <Select value={serviceType} onValueChange={setServiceType}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select service type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Shop">Shop</SelectItem>
+                <SelectItem value="Outsource">Outsource</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
             <Label htmlFor="paymentMode">Payment Mode</Label>
             <Select value={paymentMode} onValueChange={setPaymentMode} required>
               <SelectTrigger className="mt-1">
@@ -225,6 +245,18 @@ export function AddInvoiceModal({
                 <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Enter description (optional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="mt-1 min-h-[80px]"
+              maxLength={1000}
+            />
           </div>
 
           <div className="bg-gray-50 p-3 rounded-lg">

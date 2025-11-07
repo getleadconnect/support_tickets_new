@@ -16,6 +16,7 @@ interface Invoice {
   ticket_id: number;
   customer_id: number;
   invoice_date: string;
+  service_type?: string;
   service_charge: number;
   item_cost: number;
   total_amount: number;
@@ -324,6 +325,7 @@ export default function Invoices() {
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Ticket Id</th>
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Customer</th>
                 <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Inv.Date</th>
+                <th className="text-left p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Service Type</th>
                 <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Service Charge</th>
                 <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Item Cost</th>
                 <th className="text-right p-2 text-sm font-medium border-r" style={{ borderColor: '#e4e4e4' }}>Total Amount</th>
@@ -337,13 +339,13 @@ export default function Invoices() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={13} className="text-center py-8 text-gray-500">
+                  <td colSpan={14} className="text-center py-8 text-gray-500">
                     Loading invoices...
                   </td>
                 </tr>
               ) : invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="text-center py-8 text-gray-500">
+                  <td colSpan={14} className="text-center py-8 text-gray-500">
                     No invoices found
                   </td>
                 </tr>
@@ -367,6 +369,19 @@ export default function Invoices() {
                         month: '2-digit',
                         year: 'numeric'
                       }).replace(/\//g, '-')}
+                    </td>
+                    <td className="p-2 text-sm border-r" style={{ borderColor: '#e4e4e4' }}>
+                      {invoice.service_type ? (
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          invoice.service_type === 'Shop'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {invoice.service_type}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
                     </td>
                     <td className="p-2 text-sm text-right border-r" style={{ borderColor: '#e4e4e4' }}>₹{invoice.service_charge}</td>
                     <td className="p-2 text-sm text-right border-r" style={{ borderColor: '#e4e4e4' }}>₹{invoice.item_cost}</td>
@@ -458,6 +473,22 @@ export default function Invoices() {
                         month: '2-digit',
                         year: 'numeric'
                       }).replace(/\//g, '-')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Service Type:</span>
+                      <span>
+                        {invoice.service_type ? (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                            invoice.service_type === 'Shop'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {invoice.service_type}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Service:</span>

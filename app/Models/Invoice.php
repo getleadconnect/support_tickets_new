@@ -20,6 +20,8 @@ class Invoice extends Model
         'branch_id',
         'item_cost',
         'service_charge',
+        'service_type',
+        'description',
         'total_amount',
         'discount',
         'net_amount',
