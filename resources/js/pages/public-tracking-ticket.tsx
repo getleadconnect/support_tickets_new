@@ -256,18 +256,35 @@ export default function PublicTrackingTicket() {
 
             {/* Histories */}
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-3">Histories</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-slate-800 mb-4">Histories</h2>
               {trackingData.histories.length > 0 ? (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="relative">
                   {trackingData.histories.map((history, index) => (
-                    <div
-                      key={history.id}
-                      className="border-l-4 border-blue-500 pl-3 sm:pl-4 py-2 bg-slate-50 rounded-r"
-                    >
-                      <p className="text-sm sm:text-base text-slate-800 break-words">{history.comment}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {format(new Date(history.created_at), 'dd MMM yyyy, hh:mm a')}
-                      </p>
+                    <div key={history.id} className="relative pl-8 pb-6 last:pb-0">
+                      {/* Timeline line */}
+                      {index !== trackingData.histories.length - 1 && (
+                        <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-slate-200"></div>
+                      )}
+
+                      {/* Blue dot */}
+                      <div className="absolute left-0 top-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+
+                      {/* Content */}
+                      <div>
+                        <h3 className="text-sm sm:text-base font-semibold text-slate-800">
+                          {history.comment.split(':')[0] || 'Activity'}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                          {format(new Date(history.created_at), 'MMM dd, hh:mm a')}
+                        </p>
+                        {history.comment.includes(':') && (
+                          <p className="text-xs sm:text-sm text-slate-600 mt-1 break-words">
+                            {history.comment.split(':').slice(1).join(':').trim()}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
