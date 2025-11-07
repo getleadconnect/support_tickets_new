@@ -759,7 +759,7 @@ export function Dashboard() {
             <Card className="p-3 sm:p-4 lg:p-6 border-0 shadow-lg bg-white/80 backdrop-blur">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900">Revenue</h3>
+                  <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900">Monthly Revenue</h3>
                   {selectedBranch !== 'all' && (
                     <span className="text-xs sm:text-sm font-medium px-2 py-1 rounded-md" style={{ color: '#4f46e5'}}>
                      - {branches.find(b => String(b.id) === selectedBranch)?.branch_name}
