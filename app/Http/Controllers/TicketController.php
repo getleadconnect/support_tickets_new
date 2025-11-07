@@ -542,9 +542,13 @@ class TicketController extends Controller
                 //-------------------------------------------------------------------
                 }
 
-                if ( $validated['status']==3) {   
+                if ( $validated['status']==3) {
 
-                // ---- To send whatsapp message ----- delivered message --close ticket------- 
+                // Update all related tasks to Closed status (status=4)
+                Task::where('ticket_id', $ticket->id)
+                    ->update(['status' => 4]);
+
+                // ---- To send whatsapp message ----- delivered message --close ticket-------
                 try
                     {
                         $customer=Customer::where('id',$ticket->customer_id)->first();
