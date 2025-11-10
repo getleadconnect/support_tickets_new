@@ -190,6 +190,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Report routes
     Route::prefix('reports')->group(function () {
         Route::get('/monthly-revenue', [ReportController::class, 'getMonthlyRevenue']);
+        Route::get('/monthly-invoice-revenue', [ReportController::class, 'getMonthlyInvoiceRevenue']);
+        Route::get('/monthly-invoice-revenue/export', [ReportController::class, 'exportMonthlyInvoiceRevenue']);
         Route::get('/daily-revenue', [ReportController::class, 'getDailyRevenue']);
         Route::get('/tickets-report', [ReportController::class, 'getTicketsReport']);
         Route::get('/ticket-statistics', [ReportController::class, 'getTicketStatistics']);

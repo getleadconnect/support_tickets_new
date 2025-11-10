@@ -1062,6 +1062,368 @@ class ReportController extends Controller
     }
 
     /**
+     * Get monthly revenue report based on invoices
+     * Shows paid invoices grouped by service_type (Shop/Outsource) and month
+     */
+    public function getMonthlyInvoiceRevenue(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $month = $request->get('month');
+            $startDate = $request->get('start_date');
+            $endDate = $request->get('end_date');
+            $branchId = $request->get('branch_id');
+
+            // Build base query for invoices
+            $invoiceQuery = Invoice::with(['customer', 'ticket', 'branch'])
+                ->where('status', 'paid');
+
+            // Apply date filters based on filter type
+            if ($month) {
+                // Month filter - filter by invoice_date
+                $date = Carbon::createFromFormat('Y-m', $month);
+                $year = $date->year;
+                $monthNumber = $date->month;
+                $invoiceQuery->whereYear('invoice_date', $year)
+                             ->whereMonth('invoice_date', $monthNumber);
+            } elseif ($startDate && $endDate) {
+                // Date range filter - filter by invoice_date
+                $invoiceQuery->whereBetween('invoice_date', [$startDate, $endDate]);
+            } else {
+                // Default to current month if no filter provided
+                $invoiceQuery->whereYear('invoice_date', Carbon::now()->year)
+                             ->whereMonth('invoice_date', Carbon::now()->month);
+            }
+
+            // Apply branch filter based on request or user role
+            if ($branchId && $branchId !== 'all') {
+                // If branch_id is provided in request, filter by it
+                $invoiceQuery->where('branch_id', $branchId);
+            } elseif ($user->role_id != 1 && $user->branch_id) {
+                // For non-admin users without branch selection, use their branch
+                $invoiceQuery->where('branch_id', $user->branch_id);
+            }
+
+            // Get all paid invoices for the month
+            $invoices = $invoiceQuery->get();
+
+            // Separate invoices by service_type
+            $shopInvoices = $invoices->where('service_type', 'Shop');
+            $outsourceInvoices = $invoices->where('service_type', 'Outsource');
+
+            // Format Shop invoices
+            $shopData = $shopInvoices->map(function ($invoice) {
+                return [
+                    'invoice_id' => $invoice->invoice_id ?? 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                    'customer_name' => $invoice->customer ? $invoice->customer->name : 'N/A',
+                    'tracking_number' => $invoice->ticket ? $invoice->ticket->tracking_number : 'N/A',
+                    'invoice_date' => $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : 'N/A',
+                    'total_amount' => floatval($invoice->total_amount ?? 0),
+                    'discount' => floatval($invoice->discount ?? 0),
+                    'net_amount' => floatval($invoice->net_amount ?? 0),
+                    'service_type' => $invoice->service_type,
+                    'branch' => $invoice->branch ? $invoice->branch->branch_name : 'N/A',
+                ];
+            })->values();
+
+            // Format Outsource invoices
+            $outsourceData = $outsourceInvoices->map(function ($invoice) {
+                return [
+                    'invoice_id' => $invoice->invoice_id ?? 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                    'customer_name' => $invoice->customer ? $invoice->customer->name : 'N/A',
+                    'tracking_number' => $invoice->ticket ? $invoice->ticket->tracking_number : 'N/A',
+                    'invoice_date' => $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : 'N/A',
+                    'total_amount' => floatval($invoice->total_amount ?? 0),
+                    'discount' => floatval($invoice->discount ?? 0),
+                    'net_amount' => floatval($invoice->net_amount ?? 0),
+                    'service_type' => $invoice->service_type,
+                    'branch' => $invoice->branch ? $invoice->branch->branch_name : 'N/A',
+                ];
+            })->values();
+
+            // Calculate totals
+            $shopTotal = $shopInvoices->sum('net_amount');
+            $outsourceTotal = $outsourceInvoices->sum('net_amount');
+            $grandTotal = $shopTotal + $outsourceTotal;
+
+            // Determine period description
+            $periodDescription = '';
+            if ($month) {
+                $date = Carbon::createFromFormat('Y-m', $month);
+                $periodDescription = $date->format('F Y');
+            } elseif ($startDate && $endDate) {
+                $periodDescription = Carbon::parse($startDate)->format('d M Y') . ' to ' . Carbon::parse($endDate)->format('d M Y');
+            } else {
+                $periodDescription = Carbon::now()->format('F Y');
+            }
+
+            return response()->json([
+                'success' => true,
+                'month' => $periodDescription,
+                'monthValue' => $month ?? null,
+                'shopInvoices' => $shopData,
+                'shopTotal' => round($shopTotal, 2),
+                'outsourceInvoices' => $outsourceData,
+                'outsourceTotal' => round($outsourceTotal, 2),
+                'grandTotal' => round($grandTotal, 2),
+                'summary' => [
+                    'totalInvoices' => $invoices->count(),
+                    'shopCount' => $shopInvoices->count(),
+                    'outsourceCount' => $outsourceInvoices->count(),
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch monthly revenue report',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Export monthly invoice revenue report to Excel (CSV format)
+     */
+    public function exportMonthlyInvoiceRevenue(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            $month = $request->get('month');
+            $startDate = $request->get('start_date');
+            $endDate = $request->get('end_date');
+            $branchId = $request->get('branch_id');
+
+            // Build base query for invoices
+            $invoiceQuery = Invoice::with(['customer', 'ticket', 'branch'])
+                ->where('status', 'paid');
+
+            // Apply date filters based on filter type
+            $periodDescription = '';
+            if ($month) {
+                // Month filter - filter by invoice_date
+                $date = Carbon::createFromFormat('Y-m', $month);
+                $year = $date->year;
+                $monthNumber = $date->month;
+                $invoiceQuery->whereYear('invoice_date', $year)
+                             ->whereMonth('invoice_date', $monthNumber);
+                $periodDescription = $date->format('F Y');
+            } elseif ($startDate && $endDate) {
+                // Date range filter - filter by invoice_date
+                $invoiceQuery->whereBetween('invoice_date', [$startDate, $endDate]);
+                $periodDescription = Carbon::parse($startDate)->format('d M Y') . ' to ' . Carbon::parse($endDate)->format('d M Y');
+            } else {
+                // Default to current month
+                $invoiceQuery->whereYear('invoice_date', Carbon::now()->year)
+                             ->whereMonth('invoice_date', Carbon::now()->month);
+                $periodDescription = Carbon::now()->format('F Y');
+            }
+
+            // Apply branch filter based on request or user role
+            if ($branchId && $branchId !== 'all') {
+                $invoiceQuery->where('branch_id', $branchId);
+            } elseif ($user->role_id != 1 && $user->branch_id) {
+                $invoiceQuery->where('branch_id', $user->branch_id);
+            }
+
+            // Get all paid invoices for the month
+            $invoices = $invoiceQuery->get();
+
+            // Separate invoices by service_type
+            $shopInvoices = $invoices->where('service_type', 'Shop');
+            $outsourceInvoices = $invoices->where('service_type', 'Outsource');
+
+            // Calculate totals
+            $shopTotal = $shopInvoices->sum('net_amount');
+            $outsourceTotal = $outsourceInvoices->sum('net_amount');
+            $grandTotal = $shopTotal + $outsourceTotal;
+
+            // Generate CSV content
+            $csvContent = $this->generateMonthlyRevenueCsv(
+                $shopInvoices,
+                $outsourceInvoices,
+                $shopTotal,
+                $outsourceTotal,
+                $grandTotal,
+                $periodDescription
+            );
+
+            // Generate filename based on filter type
+            if ($month) {
+                $filename = 'monthly_revenue_report_' . str_replace('-', '_', $month) . '.csv';
+            } elseif ($startDate && $endDate) {
+                $filename = 'revenue_report_' . str_replace('-', '_', $startDate) . '_to_' . str_replace('-', '_', $endDate) . '.csv';
+            } else {
+                $filename = 'revenue_report_' . Carbon::now()->format('Y_m') . '.csv';
+            }
+
+            // Return CSV file that can be opened in Excel
+            return response($csvContent, 200, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to export report: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate CSV content for monthly revenue report
+     */
+    private function generateMonthlyRevenueCsv($shopInvoices, $outsourceInvoices, $shopTotal, $outsourceTotal, $grandTotal, $period)
+    {
+        $output = fopen('php://temp', 'r+');
+
+        // Add report header
+        fputcsv($output, ['REVENUE REPORT']);
+        fputcsv($output, []);
+        fputcsv($output, ['Period:', $period]);
+        fputcsv($output, ['Generated On:', now()->format('d/m/Y H:i')]);
+        fputcsv($output, []);
+
+        // Add summary section
+        fputcsv($output, ['SUMMARY']);
+        fputcsv($output, ['Total Invoices:', $shopInvoices->count() + $outsourceInvoices->count()]);
+        fputcsv($output, ['Shop Invoices:', $shopInvoices->count()]);
+        fputcsv($output, ['Outsource Invoices:', $outsourceInvoices->count()]);
+        fputcsv($output, ['Grand Total:', '₹' . number_format($grandTotal, 2)]);
+        fputcsv($output, []);
+        fputcsv($output, ['========================================']);
+        fputcsv($output, []);
+
+        // SHOP INVOICES SECTION
+        fputcsv($output, ['SHOP INVOICES']);
+        fputcsv($output, []);
+
+        if ($shopInvoices->count() > 0) {
+            // Shop invoices headers
+            fputcsv($output, [
+                'Sr No',
+                'Invoice ID',
+                'Customer Name',
+                'Tracking Number',
+                'Invoice Date',
+                'Total Amount (₹)',
+                'Discount (₹)',
+                'Net Amount (₹)',
+                'Branch'
+            ]);
+
+            // Shop invoices data
+            $index = 1;
+            foreach ($shopInvoices as $invoice) {
+                fputcsv($output, [
+                    $index++,
+                    $invoice->invoice_id ?? 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                    $invoice->customer ? $invoice->customer->name : 'N/A',
+                    $invoice->ticket ? $invoice->ticket->tracking_number : 'N/A',
+                    $invoice->invoice_date ? Carbon::parse($invoice->invoice_date)->format('d/m/Y') : 'N/A',
+                    number_format($invoice->total_amount ?? 0, 2),
+                    number_format($invoice->discount ?? 0, 2),
+                    number_format($invoice->net_amount ?? 0, 2),
+                    $invoice->branch ? $invoice->branch->branch_name : 'N/A',
+                ]);
+            }
+
+            // Shop total row
+            fputcsv($output, []);
+            fputcsv($output, [
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                'SHOP TOTAL:',
+                '₹' . number_format($shopTotal, 2),
+                ''
+            ]);
+        } else {
+            fputcsv($output, ['No shop invoices found for this month']);
+        }
+
+        fputcsv($output, []);
+        fputcsv($output, ['========================================']);
+        fputcsv($output, []);
+
+        // OUTSOURCE INVOICES SECTION
+        fputcsv($output, ['OUTSOURCE INVOICES']);
+        fputcsv($output, []);
+
+        if ($outsourceInvoices->count() > 0) {
+            // Outsource invoices headers
+            fputcsv($output, [
+                'Sr No',
+                'Invoice ID',
+                'Customer Name',
+                'Tracking Number',
+                'Invoice Date',
+                'Total Amount (₹)',
+                'Discount (₹)',
+                'Net Amount (₹)',
+                'Branch'
+            ]);
+
+            // Outsource invoices data
+            $index = 1;
+            foreach ($outsourceInvoices as $invoice) {
+                fputcsv($output, [
+                    $index++,
+                    $invoice->invoice_id ?? 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                    $invoice->customer ? $invoice->customer->name : 'N/A',
+                    $invoice->ticket ? $invoice->ticket->tracking_number : 'N/A',
+                    $invoice->invoice_date ? Carbon::parse($invoice->invoice_date)->format('d/m/Y') : 'N/A',
+                    number_format($invoice->total_amount ?? 0, 2),
+                    number_format($invoice->discount ?? 0, 2),
+                    number_format($invoice->net_amount ?? 0, 2),
+                    $invoice->branch ? $invoice->branch->branch_name : 'N/A',
+                ]);
+            }
+
+            // Outsource total row
+            fputcsv($output, []);
+            fputcsv($output, [
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                'OUTSOURCE TOTAL:',
+                '₹' . number_format($outsourceTotal, 2),
+                ''
+            ]);
+        } else {
+            fputcsv($output, ['No outsource invoices found for this month']);
+        }
+
+        fputcsv($output, []);
+        fputcsv($output, ['========================================']);
+        fputcsv($output, []);
+
+        // GRAND TOTAL SECTION
+        fputcsv($output, ['GRAND TOTAL']);
+        fputcsv($output, ['Period:', $period]);
+        fputcsv($output, ['Shop Total:', '₹' . number_format($shopTotal, 2)]);
+        fputcsv($output, ['Outsource Total:', '₹' . number_format($outsourceTotal, 2)]);
+        fputcsv($output, ['GRAND TOTAL:', '₹' . number_format($grandTotal, 2)]);
+
+        rewind($output);
+        $csv = stream_get_contents($output);
+        fclose($output);
+
+        // Add UTF-8 BOM for Excel compatibility
+        return "\xEF\xBB\xBF" . $csv;
+    }
+
+    /**
      * Get quick stats for reports page
      * Shows total revenue, total tickets, active customers, completion rate
      */

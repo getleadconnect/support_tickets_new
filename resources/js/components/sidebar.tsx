@@ -112,6 +112,11 @@ const navigationItems: NavItem[] = [
         icon: FileText,
       },
       {
+        title: 'Monthly Revenue',
+        href: '/monthly-revenue-report',
+        icon: CreditCard,
+      },
+      {
         title: 'Staff Tickets',
         href: '/staff-tickets-report',
         icon: Users,
@@ -146,7 +151,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   const isTicketsActive = ticketsMenuPaths.includes(location.pathname);
 
   // Auto-expand Reports menu if any report-related page is active
-  const reportsMenuPaths = ['/reports', '/staff-tickets-report', '/staff-monthly-splitups'];
+  const reportsMenuPaths = ['/reports', '/monthly-revenue-report', '/staff-tickets-report', '/staff-monthly-splitups'];
   const isReportsActive = reportsMenuPaths.includes(location.pathname);
 
   const [expandedItems, setExpandedItems] = useState<string[]>([
@@ -208,7 +213,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   // Auto-expand Tickets menu when navigating to ticket-related pages
   useEffect(() => {
     const ticketPaths = ['/tickets', '/verify-tickets', '/closed-tickets', '/deleted-tickets'];
-    const reportPaths = ['/reports', '/staff-tickets-report', '/staff-monthly-splitups'];
+    const reportPaths = ['/reports', '/monthly-revenue-report', '/staff-tickets-report', '/staff-monthly-splitups'];
 
     if (ticketPaths.includes(location.pathname)) {
       if (!expandedItems.includes('Tickets')) {
