@@ -37,6 +37,8 @@ class BranchController extends Controller
             return [
                 'id' => $branch->id,
                 'branch_name' => $branch->branch_name,
+                'country_code' => $branch->country_code,
+                'customer_care_number' => $branch->customer_care_number,
                 'created_by' => $branch->createdBy ? [
                     'id' => $branch->createdBy->id,
                     'name' => $branch->createdBy->name
@@ -56,6 +58,8 @@ class BranchController extends Controller
     {
         $validated = $request->validate([
             'branch_name' => 'required|string|max:255|unique:branches',
+            'country_code' => 'nullable|string|max:10',
+            'customer_care_number' => 'nullable|string|max:20',
         ]);
 
         $validated['created_by'] = Auth::id();
@@ -68,6 +72,8 @@ class BranchController extends Controller
             'branch' => [
                 'id' => $branch->id,
                 'branch_name' => $branch->branch_name,
+                'country_code' => $branch->country_code,
+                'customer_care_number' => $branch->customer_care_number,
                 'created_by' => $branch->createdBy ? [
                     'id' => $branch->createdBy->id,
                     'name' => $branch->createdBy->name
@@ -93,6 +99,8 @@ class BranchController extends Controller
     {
         $validated = $request->validate([
             'branch_name' => 'sometimes|required|string|max:255|unique:branches,branch_name,' . $branch->id,
+            'country_code' => 'nullable|string|max:10',
+            'customer_care_number' => 'nullable|string|max:20',
         ]);
 
         $branch->update($validated);
@@ -103,6 +111,8 @@ class BranchController extends Controller
             'branch' => [
                 'id' => $branch->id,
                 'branch_name' => $branch->branch_name,
+                'country_code' => $branch->country_code,
+                'customer_care_number' => $branch->customer_care_number,
                 'created_by' => $branch->createdBy ? [
                     'id' => $branch->createdBy->id,
                     'name' => $branch->createdBy->name

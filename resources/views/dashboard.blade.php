@@ -18,10 +18,10 @@
     </script>
 
     <!-- Country Code Picker CSS -->
-    <link rel="stylesheet" href="{{ asset('css/jquery.ccpicker.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/ccpicker/ccpicker.css') }}">
 
     <!-- Country Code Picker JS -->
-    <script src="{{ asset('js/jquery.ccpicker.js') }}"></script>
+    <script src="{{ asset('js/ccpicker/ccpicker.js') }}"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.jsx'])
 </head>

@@ -45,6 +45,7 @@ class BranchDashboardController extends Controller
         ]);
     }
     
+    
     private function getMonthlyTicketData($branchId)
     {
         $data = [];

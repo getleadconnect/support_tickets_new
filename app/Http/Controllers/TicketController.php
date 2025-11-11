@@ -360,11 +360,12 @@ class TicketController extends Controller
             ]);
         }
 
-          /* ---- To send whatsapp message ----- service request -------------- */
+        /* ---- To send whatsapp message ----- service request -------------- */
         
             try
             {
-                $customer=Customer::where('id',$ticket->customer_id)->first();
+
+               $customer=Customer::where('id',$ticket->customer_id)->first();
 
                 $data=[
                     "customer_name"=>$customer->name,
@@ -372,7 +373,8 @@ class TicketController extends Controller
                     "tracking_id"=>$ticket->tracking_number,
                     "template_id"=>"259094", //wabis id
                     "delivered_date"=>null,
-                    "delivery_text"=>null
+                    "delivery_text"=>null,
+                    "branch_id"=>$validated['branch_id']
                 ];
 
                 $send_response=$this->sendServiceMessages($data);
@@ -529,7 +531,8 @@ class TicketController extends Controller
                             "tracking_id"=>$ticket->tracking_number,
                             "template_id"=>"259096", //wabis id
                             "delivered_date"=>null,
-                            "delivery_text"=>null
+                            "delivery_text"=>null,
+                            "branch_id"=>$validated['branch_id']
                         ];
 
                         $send_response=$this->sendServiceMessages($data);
@@ -558,7 +561,8 @@ class TicketController extends Controller
                             "tracking_id"=>$ticket->tracking_number,
                             "template_id"=>"259187", //wabis id
                             "delivered_date"=>date('d-m-Y'),
-                            "delivery_text"=>"Your device/service request with *ID: ".$ticket->tracking_number
+                            "delivery_text"=>"Your device/service request with *ID: ".$ticket->tracking_number,
+                            "branch_id"=>$validated['branch_id']
                         ];
 
                         $send_response=$this->sendServiceMessages($data);
@@ -696,56 +700,6 @@ class TicketController extends Controller
             }
         }
 
-/*
-
-        if (isset($validated['status']) && $validated['status']==4) {
-
-          // ---- To send whatsapp message ----- completed message --------- 
-           try
-            {
-                $customer=Customer::where('id',$ticket->customer_id)->first();
-                $data=[
-                    "customer_name"=>$customer->name,
-                    "user_mobile"=>$customer->country_code.$customer->mobile,
-                    "tracking_id"=>$ticket->tracking_number,
-                    "template_id"=>"259096", //wabis id
-                    "delivered_date"=>null
-                  ];
-
-                $send_response=$this->sendServiceMessages($data);
-                \Log::info($send_response);
-            }
-            catch (\Exception $e) {
-                \Log::info($e->getMessage());
-            }
-        
-          //-------------------------------------------------------------------
-        }
-
-        if (isset($validated['status']) && $validated['status']==3) {   
-
-         // ---- To send whatsapp message ----- delivered message --close ticket------- 
-           try
-            {
-                $customer=Customer::where('id',$ticket->customer_id)->first();
-                $data=[
-                    "customer_name"=>$customer->name,
-                    "user_mobile"=>$customer->country_code.$customer->mobile,
-                    "tracking_id"=>$ticket->tracking_number,
-                    "template_id"=>"259106", //wabis id
-                    "delivered_date"=>$ticket->closed_at
-                  ];
-
-                $send_response=$this->sendServiceMessages($data);
-                \Log::info($send_response);
-            }
-            catch (\Exception $e) {
-                \Log::info($e->getMessage());
-            }
-          //-------------------------------------------------------------------
-        }
-
-*/
 
         return response()->json([
             'message' => 'Ticket updated successfully',

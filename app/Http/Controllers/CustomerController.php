@@ -325,7 +325,8 @@ public function getTicketLabels()
                     "tracking_id"=>$trackingNumber,
                     "template_id"=>"259094", //wabis id
                     "delivered_date"=>null,
-                    "delivery_text"=>null
+                    "delivery_text"=>null,
+                    "branch_id"=>$validated['branch_id']
                 ];
 
                 $send_response=$this->sendServiceMessages($data);
