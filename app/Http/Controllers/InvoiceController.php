@@ -146,6 +146,8 @@ class InvoiceController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::info($e->getMessage());
+            
             return response()->json([
                 'message' => 'Failed to create invoice',
                 'error' => $e->getMessage()

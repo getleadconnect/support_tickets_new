@@ -500,6 +500,134 @@ sudo apt-get install php8.2-xml php8.2-mysql php8.2-mbstring php8.2-curl
 
 ## Recent Updates and Features
 
+### Branches Country Code and Customer Care Number (Added: 2025-11-11)
+
+**Feature**: Added country code and customer care number fields to branches management
+
+**Database Changes**:
+- Added `country_code` (varchar 10) column to `branches` table with default value '+91'
+- Added `customer_care_number` (varchar 50) column to `branches` table
+- Migration file: `2025_11_11_050206_add_country_code_and_customer_care_number_to_branches_table.php`
+
+**Backend** (`app/Http/Controllers/BranchController.php`):
+- Updated `index()` method to include country_code and customer_care_number in response
+- Updated `store()` method with validation:
+  - `country_code`: nullable, string, max:10
+  - `customer_care_number`: nullable, string, max:20
+- Updated `update()` method with same validation rules
+- All responses now return country_code and customer_care_number fields
+
+**Model** (`app/Models/Branch.php`):
+- Fields already included in `$fillable` array: `country_code`, `customer_care_number`
+
+**Frontend** (`resources/js/pages/settings.tsx`):
+
+**Country Codes Array**:
+- Created `COUNTRY_CODES` constant with **240+ countries**
+- Each entry includes: `code`, `name`, and `flag` emoji
+- Alphabetically sorted (A-Z)
+- Default: +91 India 🇮🇳
+- Comprehensive coverage: Africa, Asia, Americas, Europe, Oceania, Caribbean, Pacific Islands
+
+**Add Branch Form (Left Column - 25% width)**:
+- **Branch Name**: Text input field
+- **Country Code**: Select dropdown with 240+ countries
+  - Shows flag emoji + country name + code (e.g., "🇮🇳 India (+91)")
+  - Scrollable dropdown (max-height: 300px)
+  - Uses shadcn/ui Select component
+  - Value updates `branchFormData.country_code`
+- **Customer Care Number**: Text input field
+  - Number-only validation (removes non-digits)
+  - Max length: 15 characters
+  - Updates `branchFormData.customer_care_number`
+
+**Edit Branch Modal**:
+- Dialog with same three fields as Add form
+- Pre-fills existing values when editing
+- Country Code dropdown pre-selects current country
+- Same validation and components as Add form
+
+**Table Display (Desktop - 75% width)**:
+- Added two new columns:
+  - **Country Code**: Shows selected country code (e.g., "+91")
+  - **Customer Care Number**: Shows customer care number or "-"
+- Column order: Branch Name | Country Code | Customer Care Number | Created By | Created At | Actions
+- Updated colSpan from 4 to 6 for loading/error/empty states
+
+**Mobile Card View**:
+- Displays country code and customer care number in card layout
+- Format:
+  - **Country Code**: +91
+  - **Customer Care**: [number or "-"]
+  - **Created**: [date]
+
+**State Management**:
+- Updated `branchFormData` state to include:
+  ```typescript
+  {
+    branch_name: '',
+    country_code: '+91',  // Default India
+    customer_care_number: ''
+  }
+  ```
+- Updated `handleEditBranch()` to populate all three fields
+- Updated API calls in `handleAddBranch()` and `handleUpdateBranch()` to send all fields
+
+**Branch Interface**:
+```typescript
+interface Branch {
+  id: number;
+  branch_name: string;
+  country_code?: string;
+  customer_care_number?: string;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  // ...
+}
+```
+
+**Implementation Details**:
+- Uses shadcn/ui Select component (not custom jQuery library)
+- Country dropdown is searchable by scrolling
+- Flag emojis provide visual identification
+- Clean, consistent UI following project design patterns
+- Numbers-only validation for customer care field
+
+**Build Results**:
+- settings.js: 161.30 kB (27.13 kB gzipped)
+- Increased slightly due to 240+ country codes array
+
+**User Experience**:
+1. **Adding a Branch**:
+   - Enter branch name
+   - Select country code from dropdown (default: 🇮🇳 India +91)
+   - Enter customer care number (optional)
+   - Click "Add Branch"
+
+2. **Editing a Branch**:
+   - Click edit button → Modal opens
+   - All fields pre-populated
+   - Can change country code via dropdown
+   - Can update customer care number
+   - Click "Save Changes"
+
+3. **Viewing Branches**:
+   - Desktop: Table shows all fields in columns
+   - Mobile: Card view shows all information
+   - Both display country code and customer care number
+
+**Files Modified**:
+1. `database/migrations/2025_11_11_050206_add_country_code_and_customer_care_number_to_branches_table.php`
+2. `app/Http/Controllers/BranchController.php`
+3. `resources/js/pages/settings.tsx`
+
+**Notes**:
+- Initially implemented with ccpicker jQuery library, then replaced with shadcn/ui Select for consistency
+- Default country code set to +91 (India) for existing and new branches
+- Customer care number is optional (nullable)
+- Country code dropdown includes all 240+ countries worldwide
+
 ### Ticket Status Close Confirmation (Added: 2025-01-03)
 
 **Feature**: Confirmation dialog when changing ticket status to "Closed"
