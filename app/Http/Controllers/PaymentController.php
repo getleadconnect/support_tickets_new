@@ -103,6 +103,14 @@ class PaymentController extends Controller
 
             // Calculate net amount
             $discount = $validated['discount'] ?? 0;
+
+            // Validate discount does not exceed service charge
+            if ($discount > $invoice->service_charge) {
+                return response()->json([
+                    'message' => 'Discount cannot exceed service charge'
+                ], 422);
+            }
+
             $netAmount = $invoice->total_amount - $discount;
 
             // Get user for branch_id

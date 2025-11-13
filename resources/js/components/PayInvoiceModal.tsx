@@ -37,9 +37,16 @@ export function PayInvoiceModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!paymentMode) {
       toast.error('Please select a payment mode');
+      return;
+    }
+
+    // Check if discount exceeds service charge
+    const discountValue = parseFloat(discount) || 0;
+    if (discountValue > invoice.service_charge) {
+      toast.error('Discount cannot exceed service charge');
       return;
     }
 
@@ -122,12 +129,17 @@ export function PayInvoiceModal({
               type="number"
               step="0.01"
               min="0"
-              max={invoice.total_amount}
+              max={invoice.service_charge}
               placeholder="Enter discount amount"
               value={discount}
               onChange={(e) => setDiscount(e.target.value)}
               className="mt-1"
             />
+            {parseFloat(discount) > invoice.service_charge && (
+              <p className="text-xs text-red-500 mt-1">
+                Discount cannot exceed service charge (₹{invoice.service_charge})
+              </p>
+            )}
           </div>
 
           <div>

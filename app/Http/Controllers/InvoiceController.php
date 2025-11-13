@@ -259,9 +259,9 @@ class InvoiceController extends Controller
             $serviceCharge = $invoice->service_charge ?? 0;
             $grandTotal = $partsTotal + $serviceCharge;
 
-            // Get discount and net_amount from invoice table
+            // Use discount and net_amount from invoice record
             $discount = $invoice->discount ?? 0;
-            $netTotal = $invoice->net_amount ?? ($grandTotal - $discount);
+            $netTotal = $invoice->net_amount ?? ($invoice->total_amount - $discount);
 
             // Get payment record if exists
             $payment = \App\Models\Payment::where('invoice_id', $invoice->id)->first();
@@ -313,13 +313,9 @@ class InvoiceController extends Controller
             $sparePartsTotal = 0; // Not showing parts in PDF
             $totalAmount = $invoice->service_charge; // Only service charge in PDF
 
-            // Check if payment exists and get discount
-            $payment = DB::table('payments')
-                ->where('invoice_id', $invoice->id)
-                ->first();
-
-            $discount = $payment ? $payment->discount : 0;
-            $netAmount = $totalAmount - $discount;
+            // Use discount and net_amount from invoice record
+            $discount = $invoice->discount ?? 0;
+            $netAmount = $invoice->net_amount ?? ($totalAmount - $discount);
 
             // Convert amount to words (Indian numbering system)
             $amountInWords = $this->convertNumberToWords($netAmount);
