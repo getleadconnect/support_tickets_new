@@ -2308,8 +2308,8 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
                           
                           {selectedProduct && (
                             <div className="text-sm space-y-1 p-2 bg-blue-50 rounded">
-                              <p>Unit Price: ${selectedProduct.cost || 0}</p>
-                              <p className="font-semibold">Total Price: ${totalPrice.toFixed(2)}</p>
+                              <p>Unit Price: ₹{selectedProduct.cost || 0}</p>
+                              <p className="font-semibold">Total Price: ₹{totalPrice.toFixed(2)}</p>
                             </div>
                           )}
                         </div>
@@ -2357,8 +2357,8 @@ export const TicketDetailsModal: React.FC<TicketDetailsModalProps> = ({
                                   </p>
                                   <p className="text-xs text-gray-500">
                                     Quantity: {sparePart.quantity} • 
-                                    Unit Price: ${sparePart.price} • 
-                                    Total: ${sparePart.total_price}
+                                    Unit Price: ₹{sparePart.price} • 
+                                    Total: ₹{sparePart.total_price}
                                   </p>
                                   <p className="text-xs text-gray-400">
                                     Added on {new Date(sparePart.created_at).toLocaleDateString('en-US', {
