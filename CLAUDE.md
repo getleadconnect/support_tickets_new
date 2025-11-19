@@ -6,6 +6,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Laravel 12 + React support ticket management system with multi-role access control, task management, reporting, and invoice generation capabilities. The system uses XAMPP/LAMPP for local development.
 
+## Quick Start for New Developers
+
+```bash
+# 1. Install dependencies
+composer install
+npm install
+
+# 2. Configure environment
+# Copy .env.example to .env and configure database settings
+# Set APP_URL based on your environment (see Environment Configuration section)
+
+# 3. Run migrations
+php artisan migrate
+
+# 4. Clear config cache (critical after .env changes)
+php artisan config:clear
+
+# 5. Start development environment
+composer run dev
+# This starts: Laravel server, queue worker, logs viewer, and Vite dev server
+
+# Alternative: Run services individually
+php artisan serve               # Backend at http://127.0.0.1:8000
+npm run dev                     # Frontend dev server
+php artisan queue:listen --tries=1  # Background jobs
+php artisan pail --timeout=0    # Live logs
+```
+
+**First-time setup checklist:**
+- [ ] Database created in MySQL
+- [ ] `.env` configured with correct `APP_URL` and database credentials
+- [ ] Migrations run successfully
+- [ ] Config cache cleared
+- [ ] All services running without errors
+
 ## Tech Stack
 
 - **Backend**: Laravel 12 (PHP 8.2+)
@@ -276,6 +311,64 @@ if ($user->role_id == 3) {
 - Branch Admin filtering uses `whereHas('agent', function($q) use ($user) { $q->where('users.branch_id', $user->branch_id); })`
 - `getAgents()` method filters available agents based on role (Agents see only themselves, Managers see assigned agents, Branch Admins see same-branch agents)
 
+### Role Filtering Template Pattern
+
+When implementing new features with role-based access, use this template:
+
+```php
+public function index(Request $request)
+{
+    $user = auth()->user();
+    $query = YourModel::with(['relationships']);
+
+    // Admin (role_id = 1) - See everything, no filter
+    if ($user->role_id == 1) {
+        // No additional filtering
+    }
+
+    // Agent (role_id = 2) - See only assigned items
+    elseif ($user->role_id == 2) {
+        $query->whereHas('agent', function($q) use ($user) {
+            $q->where('agent_id', $user->id);
+        });
+    }
+
+    // Manager (role_id = 3) - See items assigned to managed agents
+    elseif ($user->role_id == 3) {
+        $assignedAgentIds = DB::table('assign_agents')
+            ->where('user_id', $user->id)
+            ->pluck('agent_id')->toArray();
+
+        if (!empty($assignedAgentIds)) {
+            $query->whereHas('agent', function($q) use ($assignedAgentIds) {
+                $q->whereIn('agent_id', $assignedAgentIds);
+            });
+        } else {
+            // Manager has no assigned agents - show nothing
+            $query->whereRaw('1 = 0');
+        }
+    }
+
+    // Branch Admin (role_id = 4) - See items from their branch
+    elseif ($user->role_id == 4 && $user->branch_id) {
+        $query->where('branch_id', $user->branch_id);
+        // OR if filtering via agent relationship:
+        // $query->whereHas('agent', function($q) use ($user) {
+        //     $q->where('users.branch_id', $user->branch_id);
+        // });
+    }
+
+    return response()->json($query->paginate($request->per_page ?? 10));
+}
+```
+
+**Key Points**:
+- Always check `$user->role_id` first
+- Use `whereHas()` for relationship-based filtering
+- Manager filtering requires `assign_agents` lookup
+- Return empty results (`whereRaw('1 = 0')`) if manager has no assigned agents
+- Branch Admin filtering needs `branch_id` check
+
 ## Activity Logging System
 
 All ticket/task changes create activity records in the `activities` table with these fields:
@@ -318,6 +411,19 @@ All ticket/task changes create activity records in the `activities` table with t
 - To show related data for soft-deleted tickets, use `->withTrashed()` in relationships
 - Example: `Task::ticket()` relationship uses `->withTrashed()` to display tracking numbers for deleted tickets
 - Soft-deleted tickets can be viewed in `deleted-tickets.tsx` and restored via `/api/tickets/{ticket}/restore` endpoint
+
+**CRITICAL PATTERN**: When creating new relationships to the Ticket model, always consider if you need `->withTrashed()`:
+```php
+// If you need to show data even when ticket is deleted
+public function ticket() {
+    return $this->belongsTo(Ticket::class)->withTrashed();
+}
+
+// Without ->withTrashed(), deleted tickets will return null
+public function ticket() {
+    return $this->belongsTo(Ticket::class); // ❌ Will break if ticket is soft-deleted
+}
+```
 
 ### File Uploads
 
@@ -442,9 +548,26 @@ export default function MyFeature() {
 Use the built-in test suite:
 ```bash
 composer run test
+# Equivalent to: php artisan config:clear && php artisan test
 ```
 
-Or test specific endpoints with tools like Postman/Insomnia using Sanctum token authentication.
+**Testing Workflow**:
+1. Write feature tests in `tests/Feature/` for API endpoints
+2. Write unit tests in `tests/Unit/` for model logic and helpers
+3. Run tests after making changes to verify no regressions
+4. Tests automatically clear config cache before running
+
+**Manual API Testing**:
+- Use Postman/Insomnia with Sanctum token authentication
+- Get token from `POST /api/login` response
+- Add header: `Authorization: Bearer {token}`
+- All routes except `/api/login` and `/api/register-customer` require authentication
+
+**Common Test Scenarios**:
+- Role-based filtering (test as different role_id users)
+- Soft delete restoration (verify `->withTrashed()` works)
+- Activity logging (check activities table after changes)
+- WhatsApp notifications (verify jobs dispatched)
 
 ## Build and Deployment
 
@@ -470,6 +593,64 @@ The project uses code splitting for optimal performance:
 - `ui-vendor`: Radix UI components
 - `charts`: Recharts library
 - `utils`: Axios, date-fns, class utilities
+- `jquery-plugins`: jQuery + Select2 (for searchable dropdowns)
+
+**Build Settings** (`vite.config.js`):
+- Chunk size warning limit: 600KB
+- Terser minification (keeps console logs, removes debugger)
+- Sourcemaps disabled in production
+- All major libraries pre-bundled via `optimizeDeps.include`
+
+**Performance Optimizations**:
+- React components lazy-loaded (see app.jsx - only Login/Register eagerly loaded)
+- Separate vendor chunks reduce main bundle size
+- Long-term caching enabled via content hashing in filenames
+
+## Key Architectural Decisions & Patterns
+
+### Why Controller-Only Logic?
+
+This strict pattern ensures:
+- **Testability**: Controllers can be unit tested without bootstrapping routes
+- **Maintainability**: All business logic in one place, not scattered across routes
+- **Reusability**: Controller methods can be called from multiple routes or other controllers
+- **Clarity**: Routes file becomes a simple HTTP endpoint map
+
+### Why Selective Soft Deletes?
+
+- **Tickets use SoftDeletes**: Customer-facing records need audit trail and restoration capability
+- **Tasks do NOT use SoftDeletes**: Internal workflow records can be permanently deleted
+- **Activities table**: Immutable audit log (no deletes) preserves complete history
+
+### WhatsApp Integration as Trait
+
+`WhatsappApiService` is implemented as a PHP Trait (not a Service class) because:
+- Used in multiple controllers (TicketController, TaskController)
+- Needs access to controller's request/response context
+- Dispatches background jobs via Laravel's queue system
+- Configuration dynamically loaded from database (`message_settings` table)
+
+### Select2 vs shadcn/ui Select
+
+While the project uses shadcn/ui for most components, Select2 is used for customer dropdowns because:
+- Needs to search across multiple fields (name + mobile number)
+- Displays complex content in dropdown (name + formatted phone number)
+- Handles large customer lists efficiently with virtual scrolling
+- **Pattern**: Use shadcn/ui for simple selects, Select2 for complex searchable dropdowns
+
+### Activity Logging Philosophy
+
+Every state change creates an Activity record with:
+- **What changed**: Type field (e.g., "Status Changed", "Agent Assigned")
+- **Details**: Note field with old→new values
+- **Context**: Foreign keys to ticket, task, user, status, priority, branch
+- **Immutable**: Activities are never updated or deleted (audit trail integrity)
+
+This enables:
+- Complete audit trail for compliance
+- Activity timeline in ticket/task detail views
+- Reporting on agent actions and performance
+- Debugging state transition issues
 
 ## Troubleshooting
 
@@ -781,3 +962,381 @@ interface Branch {
 - Better user experience with visual country flags
 - Search capability for quick country selection
 - Optimized bundle size (reduced from 221.04 kB to 215.62 kB)
+
+### Select2 Searchable Customer Dropdown (Added: 2025-11-18)
+
+**Feature**: Implemented Select2 library for searchable customer dropdowns with mobile number display in Add and Edit Ticket modals.
+
+**Libraries Added**:
+- `jquery@3.7.1` - Required dependency for Select2
+- `select2@4.1.0-rc.0` - Searchable dropdown plugin
+- `@types/jquery@3.5.33` - TypeScript support
+- `@types/select2@4.0.63` - TypeScript support
+
+**Implementation Files**:
+
+#### 1. Add Ticket Modal (`resources/js/components/AddTicketModal.tsx`)
+
+**Imports and Initialization**:
+```typescript
+import jQuery from 'jquery';
+import select2Factory from 'select2';
+import 'select2/dist/css/select2.min.css';
+
+// Initialize select2 on jQuery
+select2Factory(jQuery);
+
+// Make jQuery available globally
+(window as any).jQuery = jQuery;
+(window as any).$ = jQuery;
+```
+
+**Customer Interface Updated**:
+```typescript
+interface Customer {
+  id: number;
+  name: string;
+  email?: string;
+  mobile?: string;
+  country_code?: string;
+}
+```
+
+**Select2 Configuration**:
+- **Placeholder**: "Select a customer..."
+- **Search**: Always visible (minimumResultsForSearch: 0)
+- **Height**: 38px (custom CSS applied)
+- **Font-size**: 13px for all dropdown items
+- **Font-weight**: Regular (no bold styling)
+- **Clear button**: 8px left padding
+
+**Template Functions**:
+```typescript
+templateResult: function(customer: any) {
+  // Display: Customer Name (+91 1234567890)
+  return `<span style="font-size: 13px;">${customerData.name}</span>
+          <span style="color: #374151; font-size: 13px;">
+            (${customerData.country_code || ''} ${customerData.mobile})
+          </span>`;
+}
+
+templateSelection: function(customer: any) {
+  // Shows only customer name when selected
+  return customerData ? customerData.name : customer.text;
+}
+```
+
+**State Management**:
+- Added `customerSelectRef` - useRef for select element
+- Removed shadcn/ui Select component
+- Replaced with regular `<select>` element enhanced by Select2
+
+**useEffect Hook**:
+- Initializes Select2 when modal opens and customers are loaded
+- Dependency array: `[open, customers, customerId]`
+- Automatically re-initializes when customers list updates (e.g., after adding new customer)
+- Proper cleanup on unmount
+
+**Add Customer Integration**:
+- Fixed duplicate entry bug when adding new customer via "+" button
+- Previous issue: Customer appeared twice in dropdown
+- Solution: Destroy Select2 instance instead of manually appending option
+- Let useEffect re-initialize automatically with updated customers state
+
+**Styling Applied**:
+```typescript
+// Select box height
+$container.find('.select2-selection--single').css({
+  'height': '38px',
+  'display': 'flex',
+  'align-items': 'center'
+});
+
+// Clear button spacing
+$container.find('.select2-selection__clear').css({
+  'padding-left': '8px'
+});
+```
+
+#### 2. Edit Ticket Modal (`resources/js/pages/tickets.tsx`)
+
+**Same Implementation as Add Modal**:
+- Imported jQuery and Select2 factory at file level
+- Added `editCustomerSelectRef` useRef
+- Updated Customer interface with mobile and country_code fields
+- Replaced shadcn/ui Select with regular select element
+- Added Select2 initialization useEffect
+- Same configuration: 38px height, 13px font-size, no bold, search enabled
+
+**useEffect Dependency Array**:
+```typescript
+[editModalOpen, customers, editFormData.customer_id]
+```
+
+**Change Handler**:
+```typescript
+$select.on('change', function() {
+  const value = $(this).val() as string;
+  if (value) {
+    handleEditFormChange('customer_id', parseInt(value));
+  }
+});
+```
+
+**Initial Value Setting**:
+```typescript
+if (editFormData.customer_id) {
+  $select.val(editFormData.customer_id.toString()).trigger('change.select2');
+}
+```
+
+#### 3. Vite Configuration Updates (`vite.config.js`)
+
+**Added jQuery Plugins Bundle**:
+```javascript
+manualChunks: {
+  'jquery-plugins': ['jquery', 'select2'],
+}
+```
+
+**Optimized Dependencies**:
+```javascript
+optimizeDeps: {
+  include: [
+    'react',
+    'react-dom',
+    'react-router-dom',
+    'axios',
+    'recharts',
+    'date-fns',
+    'react-hot-toast',
+    'jquery',    // Added
+    'select2'    // Added
+  ],
+}
+```
+
+**Build Output**:
+- `jquery-plugins-i4N2ihbw.js`: 160.65 kB (gzipped: 50.30 kB)
+- Bundled separately for optimal loading
+
+**User Experience**:
+
+**Add Ticket Modal**:
+1. Click "Add Ticket" button
+2. Customer dropdown shows with search box
+3. Type to filter customers by name or mobile number
+4. Each option displays: **Customer Name** *(+91 1234567890)*
+5. Selected option shows only customer name
+6. Click "+" to add new customer
+7. New customer appears in dropdown (no duplicates)
+8. Dropdown auto-updates with new customer
+
+**Edit Ticket Modal**:
+1. Click edit action on any ticket
+2. Edit modal opens with searchable customer dropdown
+3. Same search and display functionality as Add modal
+4. Pre-selected customer shown
+5. Can change to different customer with search
+
+**Visual Design**:
+- Dropdown height: 38px (consistent with other inputs)
+- Font size: 13px (readable and clean)
+- Customer name: Regular font weight (not bold)
+- Mobile number: Gray color (#374151) for visual hierarchy
+- Clear button: Proper 8px left padding
+- Search box: Always visible at top of dropdown
+- Scrollable list: For many customers
+
+**Technical Implementation Details**:
+
+**Select2 Factory Pattern**:
+```typescript
+import select2Factory from 'select2';
+select2Factory(jQuery);  // Extends jQuery with .select2() method
+```
+
+**Why Factory Function**:
+- Select2 exports a factory in module environments (not UMD)
+- Must call factory with jQuery to attach select2 plugin
+- Direct import of 'select2' returns factory function
+- Factory extends jQuery prototype with select2 method
+
+**Error Handling**:
+```typescript
+if (typeof $.fn.select2 !== 'function') {
+  console.error('Select2 is not available on jQuery');
+  return;
+}
+```
+
+**Cleanup Pattern**:
+```typescript
+return () => {
+  clearTimeout(timeoutId);
+  try {
+    if ($select.data('select2')) {
+      $select.select2('destroy');
+    }
+  } catch (error) {
+    // Silently fail
+  }
+};
+```
+
+**Benefits**:
+- ✅ Live search functionality for better UX
+- ✅ Mobile numbers visible in dropdown for quick identification
+- ✅ Consistent 38px height matching other form inputs
+- ✅ Clean 13px font size throughout
+- ✅ No duplicate entries when adding new customers
+- ✅ Automatic re-initialization on data changes
+- ✅ Proper memory cleanup on unmount
+- ✅ Fallback to regular select if Select2 fails
+- ✅ Same experience in both Add and Edit modals
+- ✅ Clear button with proper spacing
+
+**Files Modified**:
+1. `resources/js/components/AddTicketModal.tsx`
+2. `resources/js/pages/tickets.tsx`
+3. `vite.config.js`
+4. `package.json` (dependencies added)
+
+**Notes**:
+- Select2 version: 4.1.0-rc.0 (release candidate)
+- jQuery version: 3.7.1
+- Both libraries bundled in separate chunk for optimal loading
+- No changes required to backend API
+- Works with existing customer data structure
+- Compatible with existing form validation
+
+### Select2 Customer Dropdown Fix for Edit Ticket Modal (Added: 2025-11-19)
+
+**Feature**: Fixed Select2 initialization in Edit Ticket Modal and updated selected text display to show mobile numbers in both Add and Edit ticket modals.
+
+**Problem Identified**:
+- Select2 was not initializing in Edit Ticket Modal customer dropdown
+- `editCustomerSelectRef.current` was `null` when useEffect ran because the ref hadn't attached to the DOM element yet
+- Selected text only showed customer name, not mobile number (inconsistent with dropdown options)
+
+**Root Cause**:
+The ref check was happening before the modal DOM elements fully rendered, causing the initialization to exit early.
+
+**Solution Applied**:
+
+**1. Fixed Select2 Initialization Timing** (`resources/js/pages/tickets.tsx`):
+
+```javascript
+// ❌ BEFORE (Not Working)
+useEffect(() => {
+  if (!editCustomerSelectRef.current || !editModalOpen) {
+    return; // Ref is null here, exits immediately
+  }
+  setTimeout(() => {
+    // Never reaches here
+  }, 300);
+}, [editModalOpen, customers, editFormData.customer_id]);
+
+// ✅ AFTER (Working)
+useEffect(() => {
+  if (!editModalOpen) {
+    return; // Only check modal state
+  }
+
+  if (customers.length === 0) {
+    return; // Wait for customers
+  }
+
+  setTimeout(() => {
+    if (!editCustomerSelectRef.current) {
+      return; // Check ref AFTER 300ms delay
+    }
+    // Initialize Select2 - ref is now attached!
+  }, 300);
+}, [editModalOpen, customers, editFormData.customer_id]);
+```
+
+**Key Fix**: Moved the ref existence check **inside the setTimeout** instead of before it, allowing the modal DOM to fully render before checking if the ref is attached.
+
+**2. Updated templateSelection to Show Mobile Numbers**:
+
+Both Add and Edit ticket modals now display mobile numbers in the selected text:
+
+```javascript
+templateSelection: function(customer: any) {
+  if (!customer.id) {
+    return customer.text;
+  }
+  const customerData = customers.find(c => c.id === parseInt(customer.id));
+  if (customerData && customerData.mobile) {
+    const $result = $('<div></div>');
+    $result.html(`<span style="font-size: 13px;">${customerData.name}</span> <span style="color: #374151; font-size: 13px;">(${customerData.country_code || ''} ${customerData.mobile})</span>`);
+    return $result;
+  }
+  return customerData ? customerData.name : customer.text;
+}
+```
+
+**Implementation Details**:
+
+**Edit Modal Initialization**:
+```javascript
+// Find the dialog/modal container for proper dropdown rendering
+const $modalContainer = $select.closest('[role="dialog"]');
+
+$select.select2({
+  placeholder: 'Select a customer...',
+  allowClear: true,
+  width: '100%',
+  minimumResultsForSearch: 0, // Always show search box
+  dropdownParent: $modalContainer.length > 0 ? $modalContainer : $select.parent(),
+  templateResult: function(customer: any) {
+    // Shows: Customer Name (+91 1234567890)
+  },
+  templateSelection: function(customer: any) {
+    // Shows: Customer Name (+91 1234567890)
+  }
+});
+```
+
+**Timing Configuration**:
+- **Timeout**: 300ms delay to ensure modal DOM is fully rendered
+- **Dependencies**: `[editModalOpen, customers, editFormData.customer_id]`
+- **dropdownParent**: Set to modal container `[role="dialog"]` for proper z-index layering
+
+**User Experience**:
+
+**Before Fix**:
+- ❌ Edit modal: Regular dropdown (no search)
+- ✅ Add modal: Searchable dropdown working
+- 📝 Selected text: Customer Name only
+
+**After Fix**:
+- ✅ Edit modal: Searchable dropdown working
+- ✅ Add modal: Searchable dropdown working (unchanged)
+- 📝 Selected text: Customer Name *(+91 1234567890)*
+
+**Visual Consistency**:
+- **Dropdown options**: Customer Name *(+91 1234567890)*
+- **Selected text**: Customer Name *(+91 1234567890)* - **Same format!**
+- **Search**: Live search by name or mobile number
+- **Styling**: 38px height, 13px font-size
+- **Mobile number color**: Gray (#374151) for visual hierarchy
+
+**Files Modified**:
+1. `resources/js/pages/tickets.tsx` (lines 220-344) - Fixed initialization timing and updated templateSelection
+2. `resources/js/components/AddTicketModal.tsx` (lines 225-236) - Updated templateSelection
+
+**Benefits**:
+- ✅ Search functionality now works in both Add and Edit ticket modals
+- ✅ Mobile numbers visible in selected text for better identification
+- ✅ Consistent user experience across both modals
+- ✅ Proper dropdown rendering inside modal (correct z-index)
+- ✅ No performance issues with 300ms delay
+- ✅ Clean console output (debug logs removed)
+
+**Technical Notes**:
+- The 300ms timeout is critical for React to complete modal rendering and ref attachment
+- The `dropdownParent` setting ensures dropdown renders inside modal container
+- Both `templateResult` and `templateSelection` now use identical formatting
+- Select2 instance properly cleaned up on modal close to prevent memory leaks

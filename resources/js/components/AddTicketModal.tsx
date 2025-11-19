@@ -23,11 +23,25 @@ import {
 } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
 import { AddCustomerModal } from './AddCustomerModal';
+import jQuery from 'jquery';
+import select2Factory from 'select2';
+import 'select2/dist/css/select2.min.css';
+
+// Initialize select2 on jQuery
+select2Factory(jQuery);
+
+// Make jQuery available globally
+(window as any).jQuery = jQuery;
+(window as any).$ = jQuery;
+
+const $ = jQuery;
 
 interface Customer {
   id: number;
   name: string;
   email?: string;
+  mobile?: string;
+  country_code?: string;
 }
 
 interface TicketStatus {
@@ -100,6 +114,7 @@ export function AddTicketModal({
   const agentsDropdownRef = useRef<HTMLDivElement>(null);
   const notifyDropdownRef = useRef<HTMLDivElement>(null);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const customerSelectRef = useRef<HTMLSelectElement>(null);
   const [formData, setFormData] = useState({
     customer_id: customerId || undefined,
     issue: '',
@@ -154,6 +169,119 @@ export function AddTicketModal({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showLabelsDropdown, showAgentsDropdown, showNotifyDropdown]);
+
+  // Initialize Select2 for customer dropdown
+  useEffect(() => {
+    if (!customerSelectRef.current || !open || customerId) {
+      return;
+    }
+
+    // Wait for customers to be loaded
+    if (customers.length === 0) {
+      return;
+    }
+
+    const $select = $(customerSelectRef.current);
+
+    // Check if select2 is available
+    if (typeof $.fn.select2 !== 'function') {
+      console.error('Select2 is not available on jQuery');
+      console.log('jQuery version:', $.fn.jquery);
+      console.log('Available jQuery methods:', Object.keys($.fn));
+      return;
+    }
+
+    // Small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      try {
+        // Destroy any existing Select2 instance
+        if ($select.data('select2')) {
+          $select.select2('destroy');
+        }
+
+        console.log('Initializing Select2...');
+
+        // Initialize Select2 with search enabled
+        $select.select2({
+          placeholder: 'Select a customer...',
+          allowClear: true,
+          width: '100%',
+          minimumResultsForSearch: 0, // Always show search box
+          dropdownParent: $select.parent(),
+          templateResult: function(customer: any) {
+            if (!customer.id) {
+              return customer.text;
+            }
+            const customerData = customers.find(c => c.id === parseInt(customer.id));
+            if (customerData && customerData.mobile) {
+              const $result = $('<div></div>');
+              $result.html(`<span style="font-size: 13px;">${customerData.name}</span> <span style="color: #374151; font-size: 13px;">(${customerData.country_code || ''} ${customerData.mobile})</span>`);
+              return $result;
+            }
+            const $result = $('<div></div>');
+            $result.html(`<span style="font-size: 13px;">${customer.text}</span>`);
+            return $result;
+          },
+          templateSelection: function(customer: any) {
+            if (!customer.id) {
+              return customer.text;
+            }
+            const customerData = customers.find(c => c.id === parseInt(customer.id));
+            if (customerData && customerData.mobile) {
+              const $result = $('<div></div>');
+              $result.html(`<span style="font-size: 13px;">${customerData.name}</span> <span style="color: #374151; font-size: 13px;">(${customerData.country_code || ''} ${customerData.mobile})</span>`);
+              return $result;
+            }
+            return customerData ? customerData.name : customer.text;
+          }
+        });
+
+        // Set custom height for Select2 container
+        const $container = $select.next('.select2-container');
+        $container.find('.select2-selection--single').css({
+          'height': '38px',
+          'display': 'flex',
+          'align-items': 'center'
+        });
+
+        // Add left padding to clear button
+        $container.find('.select2-selection__clear').css({
+          'padding-left': '8px'
+        });
+
+        console.log('Select2 initialized successfully');
+
+        // Handle change event
+        $select.on('change', function() {
+          const value = $(this).val() as string;
+          if (value) {
+            handleFormChange('customer_id', parseInt(value));
+          } else {
+            handleFormChange('customer_id', undefined);
+          }
+        });
+
+        // Set initial value if exists
+        if (formData.customer_id) {
+          $select.val(formData.customer_id.toString()).trigger('change.select2');
+        }
+      } catch (error) {
+        console.error('Error initializing Select2:', error);
+      }
+    }, 200);
+
+    // Cleanup
+    return () => {
+      clearTimeout(timeoutId);
+      try {
+        if ($select.data('select2')) {
+          $select.select2('destroy');
+        }
+      } catch (error) {
+        // Silently fail
+      }
+    };
+  }, [open, customers, customerId]);
 
   const fetchCustomers = async () => {
     setLoadingCustomers(true);
@@ -307,6 +435,16 @@ export function AddTicketModal({
     setCustomers(prev => [...prev, newCustomer]);
     // Select the new customer
     setFormData(prev => ({ ...prev, customer_id: newCustomer.id }));
+
+    // Destroy and reinitialize Select2 with new customer
+    if (customerSelectRef.current) {
+      const $select = $(customerSelectRef.current);
+      if ($select.data('select2')) {
+        // Destroy existing Select2
+        $select.select2('destroy');
+      }
+    }
+
     // Close the add customer modal
     setShowAddCustomerModal(false);
   };
@@ -445,7 +583,7 @@ export function AddTicketModal({
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[85vh] h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="dialog-content sm:max-w-[600px] max-h-[85vh] h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Add New Ticket</DialogTitle>
           <DialogDescription>
@@ -476,31 +614,30 @@ export function AddTicketModal({
                 />
               ) : (
                 <>
-                  <Select
-                    value={formData.customer_id?.toString() || ''}
-                    onValueChange={(value) => handleFormChange('customer_id', parseInt(value))}
-                  >
-                    <SelectTrigger id="customer" className="flex-1">
-                      <SelectValue placeholder="Select a customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {loadingCustomers ? (
-                        <SelectItem value="loading" disabled>
-                          Loading customers...
-                        </SelectItem>
-                      ) : customers.length === 0 ? (
-                        <SelectItem value="no-customers" disabled>
-                          No customers found
-                        </SelectItem>
-                      ) : (
-                        customers.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id.toString()}>
-                            {customer.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex-1">
+                    <select
+                      ref={customerSelectRef}
+                      id="customer"
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm"
+                      value={formData.customer_id || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value) {
+                          handleFormChange('customer_id', parseInt(value));
+                        } else {
+                          handleFormChange('customer_id', undefined);
+                        }
+                      }}
+                    >
+                      <option value="">Select a customer...</option>
+                      {customers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}
+                          {customer.mobile ? ` (${customer.country_code || ''} ${customer.mobile})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <Button
                     type="button"
                     size="icon"

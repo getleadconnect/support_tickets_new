@@ -1,7 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import jQuery from 'jquery';
+import select2Factory from 'select2';
+import 'select2/dist/css/select2.min.css';
+
+// Initialize select2 on jQuery
+select2Factory(jQuery);
+
+// Make jQuery available globally
+(window as any).jQuery = jQuery;
+(window as any).$ = jQuery;
+
+const $ = jQuery;
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,6 +131,8 @@ interface Ticket {
 interface Customer {
   id: number;
   name: string;
+  mobile?: string;
+  country_code?: string;
 }
 
 export default function Tickets() {
@@ -175,6 +189,9 @@ export default function Tickets() {
   const [addFormData, setAddFormData] = useState<any>({});
   const [showCreatedByMe, setShowCreatedByMe] = useState(false);
 
+  // Ref for Select2 customer dropdown in edit modal
+  const editCustomerSelectRef = useRef<HTMLSelectElement>(null);
+
   useEffect(() => {
     console.log('useEffect running for fetchTickets');
     const debounceTimer = setTimeout(() => {
@@ -199,6 +216,121 @@ export default function Tickets() {
     // This ensures the list refreshes after priority updates
     setFilteredTickets(tickets);
   }, [tickets]);
+
+  // Initialize Select2 for edit customer dropdown
+  useEffect(() => {
+    if (!editModalOpen) {
+      return;
+    }
+
+    // Wait for customers to be loaded
+    if (customers.length === 0) {
+      return;
+    }
+
+    // Wait for the modal to render and ref to attach
+    const timeoutId = setTimeout(() => {
+      if (!editCustomerSelectRef.current) {
+        return;
+      }
+
+      const $select = $(editCustomerSelectRef.current);
+
+      // Check if select2 is available
+      if (typeof $.fn.select2 !== 'function') {
+        console.error('Select2 is not available on jQuery');
+        return;
+      }
+
+      try {
+        // Destroy any existing Select2 instance
+        if ($select.data('select2')) {
+          $select.select2('destroy');
+        }
+
+        // Find the dialog/modal container for proper dropdown rendering
+        const $modalContainer = $select.closest('[role="dialog"]');
+
+        // Initialize Select2 with search enabled
+        $select.select2({
+          placeholder: 'Select a customer...',
+          allowClear: true,
+          width: '100%',
+          minimumResultsForSearch: 0, // Always show search box
+          dropdownParent: $modalContainer.length > 0 ? $modalContainer : $select.parent(),
+          templateResult: function(customer: any) {
+            if (!customer.id) {
+              return customer.text;
+            }
+            const customerData = customers.find(c => c.id === parseInt(customer.id));
+            if (customerData && customerData.mobile) {
+              const $result = $('<div></div>');
+              $result.html(`<span style="font-size: 13px;">${customerData.name}</span> <span style="color: #374151; font-size: 13px;">(${customerData.country_code || ''} ${customerData.mobile})</span>`);
+              return $result;
+            }
+            const $result = $('<div></div>');
+            $result.html(`<span style="font-size: 13px;">${customer.text}</span>`);
+            return $result;
+          },
+          templateSelection: function(customer: any) {
+            if (!customer.id) {
+              return customer.text;
+            }
+            const customerData = customers.find(c => c.id === parseInt(customer.id));
+            if (customerData && customerData.mobile) {
+              const $result = $('<div></div>');
+              $result.html(`<span style="font-size: 13px;">${customerData.name}</span> <span style="color: #374151; font-size: 13px;">(${customerData.country_code || ''} ${customerData.mobile})</span>`);
+              return $result;
+            }
+            return customerData ? customerData.name : customer.text;
+          }
+        });
+
+        // Set custom height for Select2 container
+        const $container = $select.next('.select2-container');
+        $container.find('.select2-selection--single').css({
+          'height': '38px',
+          'display': 'flex',
+          'align-items': 'center'
+        });
+
+        // Add left padding to clear button
+        $container.find('.select2-selection__clear').css({
+          'padding-left': '8px'
+        });
+
+        // Handle change event
+        $select.on('change', function() {
+          const value = $(this).val() as string;
+          if (value) {
+            handleEditFormChange('customer_id', parseInt(value));
+          }
+        });
+
+        // Set initial value if exists
+        if (editFormData.customer_id) {
+          $select.val(editFormData.customer_id.toString()).trigger('change.select2');
+        }
+      } catch (error) {
+        console.error('Error initializing Select2:', error);
+      }
+    }, 300);
+
+    // Cleanup
+    return () => {
+      clearTimeout(timeoutId);
+      try {
+        if (editCustomerSelectRef.current) {
+          const $select = $(editCustomerSelectRef.current);
+          if ($select.data('select2')) {
+            $select.select2('destroy');
+          }
+        }
+      } catch (error) {
+        // Silently fail
+      }
+    };
+  }, [editModalOpen, customers, editFormData.customer_id]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -1290,21 +1422,19 @@ export default function Tickets() {
               {/* Customer */}
               <div className="grid gap-2">
                 <Label htmlFor="edit-customer">Customer <span className="text-red-500">*</span></Label>
-                <Select
-                  value={editFormData.customer_id?.toString() || ''}
-                  onValueChange={(value) => handleEditFormChange('customer_id', parseInt(value))}
+                <select
+                  ref={editCustomerSelectRef}
+                  id="edit-customer"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm"
                 >
-                  <SelectTrigger id="edit-customer">
-                    <SelectValue placeholder="Select a customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id.toString()}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <option value="">Select a customer...</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                      {customer.mobile ? ` (${customer.country_code || ''} ${customer.mobile})` : ''}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Issue */}

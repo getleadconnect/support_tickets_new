@@ -45,6 +45,7 @@ export default defineConfig({
                     ],
                     'charts': ['recharts'],
                     'utils': ['axios', 'date-fns', 'clsx', 'tailwind-merge', 'class-variance-authority'],
+                    'jquery-plugins': ['jquery', 'select2'],
                 },
             },
         },
@@ -66,7 +67,9 @@ export default defineConfig({
             'axios',
             'recharts',
             'date-fns',
-            'react-hot-toast'
+            'react-hot-toast',
+            'jquery',
+            'select2'
         ],
     },
 });
