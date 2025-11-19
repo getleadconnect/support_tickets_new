@@ -48,27 +48,38 @@
     scrollbar-width: thin;
     scrollbar-color: #cbd5e1 #f1f5f9;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: #f1f5f9;
     border-radius: 4px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
   }
-  
+
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
-  
+
   /* Override Tailwind's p-6 class to use half the padding */
   .p-6 {
     padding: 0.75rem !important; /* 12px instead of 24px */
   }
+}
+
+/* Select2 Clear Button Override */
+.select2-container--default .select2-selection--single .select2-selection__clear {
+  cursor: pointer;
+  float: right;
+  font-weight: 700;
+  height: 26px;
+  margin-right: 10px !important;
+  padding-right: 0;
+  padding-left: 10px !important;
 }

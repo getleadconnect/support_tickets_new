@@ -294,9 +294,10 @@ export default function Tickets() {
           'align-items': 'center'
         });
 
-        // Add left padding to clear button
+        // Style clear button
         $container.find('.select2-selection__clear').css({
-          'padding-left': '8px'
+          'margin-right': '10px',
+          'padding-left': '10px'
         });
 
         // Handle change event
