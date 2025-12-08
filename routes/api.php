@@ -25,6 +25,7 @@ use App\Http\Controllers\MessageSettingController;
 use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\CompanyController;
+use App\Http\Controllers\TelegramNotificationSettingController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -215,4 +216,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/qrcodes', [QRCodeController::class, 'index']);
     Route::post('/qrcodes/generate', [QRCodeController::class, 'generate']);
     Route::delete('/qrcodes/{id}', [QRCodeController::class, 'destroy']);
+
+    // Telegram Notification Settings routes
+    Route::get('/telegram-notification-settings', [TelegramNotificationSettingController::class, 'index']);
+    Route::get('/telegram-notification-settings/check-credentials', [TelegramNotificationSettingController::class, 'checkCredentials']);
+    Route::put('/telegram-notification-settings/{id}', [TelegramNotificationSettingController::class, 'update']);
+    Route::put('/telegram-notification-settings/{id}/toggle', [TelegramNotificationSettingController::class, 'toggleStatus']);
 });

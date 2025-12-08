@@ -82,7 +82,9 @@ import {
   EyeOff,
   RefreshCw,
   MapPin,
-  UserPlus
+  UserPlus,
+  Bell,
+  Send
 } from 'lucide-react';
 
 interface User {
@@ -238,6 +240,16 @@ interface MessageSetting {
     id: number;
     name: string;
   };
+}
+
+interface TelegramNotificationSetting {
+  id: number;
+  event_type: string;
+  event_name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 // Country codes with flags for dropdown - All countries
@@ -732,6 +744,12 @@ export default function Settings() {
     template_text: '',
     status: true,
   });
+
+  // Telegram Notification Settings state
+  const [telegramSettings, setTelegramSettings] = useState<TelegramNotificationSetting[]>([]);
+  const [loadingTelegramSettings, setLoadingTelegramSettings] = useState(false);
+  const [togglingTelegramSetting, setTogglingTelegramSetting] = useState<number | null>(null);
+  const [telegramCredentialsAlertOpen, setTelegramCredentialsAlertOpen] = useState(false);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
@@ -2680,6 +2698,47 @@ export default function Settings() {
     }
   }, [currentPageMessages, perPageMessages, messageTypeFilter]);
 
+  // Fetch Telegram Notification Settings
+  const fetchTelegramSettings = async () => {
+    setLoadingTelegramSettings(true);
+    try {
+      const response = await axios.get('/telegram-notification-settings');
+      setTelegramSettings(Array.isArray(response.data) ? response.data : []);
+    } catch (error: any) {
+      console.error('Error fetching telegram notification settings:', error);
+      setTelegramSettings([]);
+    } finally {
+      setLoadingTelegramSettings(false);
+    }
+  };
+
+  // Toggle Telegram Notification Setting
+  const handleToggleTelegramSetting = async (settingId: number) => {
+    setTogglingTelegramSetting(settingId);
+    try {
+      const response = await axios.put(`/telegram-notification-settings/${settingId}/toggle`);
+      toast.success('Notification setting updated successfully');
+      // Update local state
+      setTelegramSettings(prev =>
+        prev.map(setting =>
+          setting.id === settingId
+            ? { ...setting, is_active: !setting.is_active }
+            : setting
+        )
+      );
+    } catch (error: any) {
+      console.error('Error toggling telegram setting:', error);
+      // Check if credentials are missing
+      if (error.response?.data?.credentials_missing) {
+        setTelegramCredentialsAlertOpen(true);
+      } else {
+        toast.error('Failed to update notification setting');
+      }
+    } finally {
+      setTogglingTelegramSetting(null);
+    }
+  };
+
   return (
     <DashboardLayout title="Settings">
       <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -2691,6 +2750,9 @@ export default function Settings() {
             onValueChange={(value) => {
               if (value === 'notification-settings') {
                 fetchNotificationSettings();
+              }
+              if (value === 'telegram-notifications') {
+                fetchTelegramSettings();
               }
             }}
           >
@@ -2752,8 +2814,15 @@ export default function Settings() {
                   Whatsapp Settings
                 </TabsTrigger>
               )}
+              {/* Show Telegram Settings tab only for role_id=1 (Admin) */}
+              {currentUser?.role_id === 1 && (
+                <TabsTrigger value="telegram-notifications" className="w-full justify-start text-sm px-3 py-2 mt-[5px] data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:shadow-sm flex items-center gap-2">
+                  <Send className="h-4 w-4" />
+                  Telegram Settings
+                </TabsTrigger>
+              )}
             </TabsList>
-            
+
             {/* Mobile horizontal scrollable tabs */}
             <TabsList className="flex lg:hidden flex-row w-full p-1 bg-gray-50 justify-start overflow-x-auto">
               <TabsTrigger value="users" className="min-w-fit px-3 py-2 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:shadow-sm flex items-center gap-1 text-xs">
@@ -2812,8 +2881,15 @@ export default function Settings() {
                   Whatsapp
                 </TabsTrigger>
               )}
+              {/* Show Telegram Settings tab only for role_id=1 (Admin) */}
+              {currentUser?.role_id === 1 && (
+                <TabsTrigger value="telegram-notifications" className="min-w-fit px-3 py-2 data-[state=active]:bg-purple-100 data-[state=active]:text-purple-900 data-[state=active]:shadow-sm flex items-center gap-1 text-xs">
+                  <Send className="h-3 w-3" />
+                  Telegram
+                </TabsTrigger>
+              )}
             </TabsList>
-            
+
             <div className="flex-1">{/* Content wrapper */}
             
             <TabsContent value="users" className="mt-1.5">
@@ -5842,6 +5918,86 @@ export default function Settings() {
                 </div>
               </div>
             </TabsContent>
+
+            {/* Telegram Notifications Tab Content */}
+            <TabsContent value="telegram-notifications" className="mt-1.5">
+              <div className="space-y-4">
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold text-gray-900">Telegram Notifications</h3>
+                  <p className="text-sm text-gray-500 mt-1">Configure which events trigger Telegram notifications</p>
+                </div>
+
+                {/* Telegram Notification Settings Card */}
+                <div className="border border-[#e4e4e4] rounded-lg overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-blue-50 px-5 py-4 flex items-center gap-3 border-b border-[#e4e4e4]">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Send className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Telegram Notifications</h4>
+                      <p className="text-sm text-gray-500">Configure which events trigger Telegram notifications</p>
+                    </div>
+                  </div>
+
+                  {/* Settings List */}
+                  <div className="divide-y divide-[#e4e4e4]">
+                    {loadingTelegramSettings ? (
+                      <div className="p-8 flex items-center justify-center">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                      </div>
+                    ) : telegramSettings.length === 0 ? (
+                      <div className="p-8 text-center text-gray-500">
+                        No notification settings found. Settings will be created automatically.
+                      </div>
+                    ) : (
+                      telegramSettings.map((setting) => (
+                        <div
+                          key={setting.id}
+                          className={`px-5 py-4 flex items-center justify-between ${
+                            setting.is_active ? 'bg-orange-50' : 'bg-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${setting.is_active ? 'bg-orange-100' : 'bg-gray-100'}`}>
+                              {setting.event_type === 'new_ticket' ? (
+                                <Bell className={`h-4 w-4 ${setting.is_active ? 'text-orange-600' : 'text-gray-400'}`} />
+                              ) : (
+                                <RefreshCw className={`h-4 w-4 ${setting.is_active ? 'text-orange-600' : 'text-gray-400'}`} />
+                              )}
+                            </div>
+                            <div>
+                              <h5 className="font-medium text-gray-900">{setting.event_name}</h5>
+                              <p className="text-sm text-gray-500">{setting.description}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleToggleTelegramSetting(setting.id)}
+                            disabled={togglingTelegramSetting === setting.id}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                              setting.is_active ? 'bg-blue-600' : 'bg-gray-300'
+                            } ${togglingTelegramSetting === setting.id ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                setting.is_active ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Note */}
+                  <div className="bg-gray-50 px-5 py-3 border-t border-[#e4e4e4]">
+                    <p className="text-sm text-gray-500">
+                      <strong>Note:</strong> Make sure Telegram Bot Token and Chat ID are configured in the environment settings for notifications to work properly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
             </div>{/* End of content wrapper */}
           </Tabs>
         </div>
@@ -7219,7 +7375,7 @@ export default function Settings() {
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete the branch "{deletingBranch?.branch_name}"? 
+                Are you sure you want to delete the branch "{deletingBranch?.branch_name}"?
                 This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -7231,6 +7387,29 @@ export default function Settings() {
                 className="bg-red-600 hover:bg-red-700"
               >
                 {savingBranch ? 'Deleting...' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Telegram Credentials Missing Alert */}
+        <AlertDialog open={telegramCredentialsAlertOpen} onOpenChange={setTelegramCredentialsAlertOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5 text-orange-500" />
+                Telegram Configuration Required
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-left">
+                TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID not added. Please add these values in .env file.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction
+                onClick={() => setTelegramCredentialsAlertOpen(false)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                OK
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

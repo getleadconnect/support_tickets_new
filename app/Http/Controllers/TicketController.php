@@ -17,15 +17,17 @@ use App\Models\ProductTicket;
 use App\Models\Notification;
 use App\Models\Customer;
 use App\Models\TicketHistory;
+use App\Models\TelegramNotificationSetting;
 use Illuminate\Support\Facades\DB;
 use Auth;
 use App\Services\WhatsappApiService;
+use App\Services\TelegramService;
 use Log;
 
 
 class TicketController extends Controller
 {
-    use WhatsappApiService;
+    use WhatsappApiService, TelegramService;
     
     /**
      * Display a listing of the resource.
@@ -383,9 +385,59 @@ class TicketController extends Controller
             catch (\Exception $e) {
                 \Log::info($e->getMessage());
             }
-        
+
           //-------------------------------------------------------------------
 
+        /* ---- To send Telegram notification ----- ticket created -------------- */
+
+            // Check if new_ticket notification is enabled
+            if (TelegramNotificationSetting::isEnabled('new_ticket'))
+            {
+                try
+                {
+                    // Load relationships for Telegram message
+                    $ticket->load(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'branch']);
+
+                    // Get assigned agents names
+                    $assignedAgentNames = $ticket->agent->pluck('name')->implode(', ');
+
+                    // Get notified agents names
+                    $notifiedAgentNames = $ticket->notifyTo->pluck('name')->implode(', ');
+
+                    // Get branch name
+                    $branchName = $ticket->branch ? $ticket->branch->branch_name : 'N/A';
+
+                    // Get status name
+                    $statusName = $ticket->ticketStatus ? $ticket->ticketStatus->status : 'N/A';
+
+                    // Get priority name
+                    $priorityName = $ticket->ticketPriority ? $ticket->ticketPriority->name : 'N/A';
+
+                    $telegramData = [
+                        "tracking_number" => $ticket->tracking_number,
+                        "issue" => $ticket->issue,
+                        "description" => $ticket->description ?? 'N/A',
+                        "customer_name" => $customer->name ?? 'N/A',
+                        "customer_mobile" => ($customer->country_code ?? '') . ($customer->mobile ?? ''),
+                        "created_date" => $ticket->created_at->format('d-m-Y'),
+                        "created_time" => $ticket->created_at->format('h:i A'),
+                        "created_by" => Auth::user()->name,
+                        "assigned_agents" => $assignedAgentNames ?: 'None',
+                        "notified_agents" => $notifiedAgentNames ?: 'None',
+                        "branch" => $branchName,
+                        "priority" => $priorityName,
+                        "status" => $statusName,
+                        "due_date" => $ticket->due_date ? date('d-m-Y', strtotime($ticket->due_date)) : null
+                    ];
+
+                    $this->sendTelegramNotification($telegramData);
+                }
+                catch (\Exception $e) {
+                    \Log::error("Telegram notification error: " . $e->getMessage());
+                }
+            }
+
+        //-------------------------------------------------------------------
 
         return response()->json([
             'message' => 'Ticket created successfully',
@@ -496,8 +548,8 @@ class TicketController extends Controller
 
         // Log status change
         if (isset($validated['status']) && $originalStatus != $validated['status']) {
-            $oldStatus = $ticket->ticketStatus()->where('id', $originalStatus)->first();
-            $newStatus = $ticket->ticketStatus()->where('id', $validated['status'])->first();
+            $oldStatus = TicketStatus::find($originalStatus);
+            $newStatus = TicketStatus::find($validated['status']);
 
             $this->createActivity(
                 $ticket,
@@ -517,6 +569,59 @@ class TicketController extends Controller
                 'comment' => $this->getStatusComment($validated['status'], $ticket->tracking_number),
                 'created_by' => auth()->id()
             ]);
+
+            // Send Telegram notification for status change
+            if (TelegramNotificationSetting::isEnabled('ticket_status_change'))
+            {
+                try
+                {
+                    // Load relationships for Telegram message
+                    $ticket->load(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'branch']);
+
+                    $customer = Customer::find($ticket->customer_id);
+
+                    // Get assigned agents names
+                    $assignedAgentNames = $ticket->agent->pluck('name')->implode(', ');
+
+                    // Get notified agents names
+                    $notifiedAgentNames = $ticket->notifyTo->pluck('name')->implode(', ');
+
+                    // Get branch name
+                    $branchName = $ticket->branch ? $ticket->branch->branch_name : 'N/A';
+
+                    // Get status names
+                    $oldStatusName = $oldStatus ? $oldStatus->status : 'None';
+                    $newStatusName = $newStatus ? $newStatus->status : 'None';
+
+                    // Get priority name
+                    $priorityName = $ticket->ticketPriority ? $ticket->ticketPriority->name : 'N/A';
+
+                    $telegramData = [
+                        "tracking_number" => $ticket->tracking_number,
+                        "issue" => $ticket->issue,
+                        "description" => $ticket->description ?? 'N/A',
+                        "customer_name" => $customer->name ?? 'N/A',
+                        "customer_mobile" => ($customer->country_code ?? '') . ($customer->mobile ?? ''),
+                        "created_date" => $ticket->created_at->format('d-m-Y'),
+                        "created_time" => $ticket->created_at->format('h:i A'),
+                        "changed_by" => Auth::user()->name,
+                        "assigned_agents" => $assignedAgentNames ?: 'None',
+                        "notified_agents" => $notifiedAgentNames ?: 'None',
+                        "branch" => $branchName,
+                        "priority" => $priorityName,
+                        "old_status" => $oldStatusName,
+                        "new_status" => $newStatusName,
+                        "status" => $newStatusName,
+                        "due_date" => $ticket->due_date ? date('d-m-Y', strtotime($ticket->due_date)) : null,
+                        "is_status_change" => true
+                    ];
+
+                    $this->sendTelegramNotification($telegramData);
+                }
+                catch (\Exception $e) {
+                    \Log::error("Telegram status change notification error: " . $e->getMessage());
+                }
+            }
 
 
                 if ($validated['status']==4) {
