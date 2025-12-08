@@ -35,6 +35,30 @@ class AdminDashboardApiController extends Controller
                    $ticket->due_date && Carbon::parse($ticket->due_date)->lt($today);
         })->count();
 
+        // Get current week's daily tickets (Added vs Solved)
+        $startOfWeek = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $weeklyTickets = [];
+        $dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        for ($i = 0; $i < 7; $i++) {
+            $date = $startOfWeek->copy()->addDays($i);
+
+            // Count tickets added on this day
+            $addedCount = Ticket::whereDate('created_at', $date)->count();
+
+            // Count tickets solved/closed on this day (status 3 = closed, status 4 = completed)
+            $solvedCount = Ticket::whereDate('updated_at', $date)
+                ->whereIn('status', [3, 4])
+                ->count();
+
+            $weeklyTickets[] = [
+                'day' => $dayNames[$i],
+                'date' => $date->format('Y-m-d'),
+                'added' => $addedCount,
+                'solved' => $solvedCount
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -43,7 +67,8 @@ class AdminDashboardApiController extends Controller
                 'completed_tickets' => $completedTickets,
                 'open_tickets' => $openTickets,
                 'inprogress_tickets' => $inProgressTickets,
-                'closed_tickets' => $closedTickets
+                'closed_tickets' => $closedTickets,
+                'weekly_tickets' => $weeklyTickets
             ],
             'generated_at' => now()->format('Y-m-d H:i:s')
         ]);
