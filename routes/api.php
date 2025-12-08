@@ -26,6 +26,7 @@ use App\Http\Controllers\QRCodeController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\TelegramNotificationSettingController;
+use App\Http\Controllers\AdminDashboardApiController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -33,6 +34,10 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register-customer', [CustomerController::class, 'registerCustomer']);
 Route::post('/track-ticket', [TicketController::class, 'trackTicket']);
 Route::get('/company', [CompanyController::class, 'getCompanyInfo']);
+
+// Public Admin Dashboard API routes (for external integration - no authentication required)
+Route::get('/admin-dashboard', [AdminDashboardApiController::class, 'getDashboardStats']);
+Route::get('/admin-dashboard/quick-stats', [AdminDashboardApiController::class, 'getQuickStats']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
