@@ -22,17 +22,19 @@ class PaymentController extends Controller
     {
         try {
             $user = auth()->user();
-            $query = Payment::with(['invoice', 'ticket', 'customer', 'createdBy']);
+
+            // Build base query for filtering (without eager loading for sum calculation)
+            $baseQuery = Payment::query();
 
             // Apply branch filter for non-admin users
             if ($user->role_id != 1 && $user->branch_id) {
-                $query->where('branch_id', $user->branch_id);
+                $baseQuery->where('branch_id', $user->branch_id);
             }
 
             // Search functionality
             if ($request->has('search') && $request->search != '') {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $baseQuery->where(function($q) use ($search) {
                     $q->where('id', 'like', "%{$search}%")
                       ->orWhere('payment_mode', 'like', "%{$search}%")
                       ->orWhereHas('customer', function($q) use ($search) {
@@ -46,29 +48,30 @@ class PaymentController extends Controller
 
             // Date range filter
             if ($request->has('start_date') && $request->start_date != '') {
-                $query->whereDate('created_at', '>=', $request->start_date);
+                $baseQuery->whereDate('created_at', '>=', $request->start_date);
             }
 
             if ($request->has('end_date') && $request->end_date != '') {
-                $query->whereDate('created_at', '<=', $request->end_date);
+                $baseQuery->whereDate('created_at', '<=', $request->end_date);
             }
 
             // Customer filter
             if ($request->has('customer_id') && $request->customer_id != '' && $request->customer_id != 'all') {
-                $query->where('customer_id', $request->customer_id);
+                $baseQuery->where('customer_id', $request->customer_id);
             }
 
             // Payment mode filter
             if ($request->has('payment_mode') && $request->payment_mode != '' && $request->payment_mode != 'all') {
                 $paymentMode = str_replace('_', ' ', $request->payment_mode);
-                $query->where('payment_mode', 'like', "%{$paymentMode}%");
+                $baseQuery->where('payment_mode', 'like', "%{$paymentMode}%");
             }
 
-            // Calculate total net amount for all filtered records
-            $totalNetAmount = $query->sum('net_amount');
+            // Calculate total net amount using a clone of the query
+            $totalNetAmount = (clone $baseQuery)->sum('net_amount');
 
-            // Order by latest first
-            $query->orderBy('id', 'desc');
+            // Add eager loading and ordering for the main query
+            $query = $baseQuery->with(['invoice', 'ticket', 'customer', 'createdBy'])
+                               ->orderBy('id', 'desc');
 
             // Pagination
             $perPage = $request->get('per_page', 50);

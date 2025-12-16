@@ -205,12 +205,17 @@ class InvoiceController extends Controller
     {
         $user = auth()->user();
         $invoice = Invoice::findOrFail($id);
-        
-        // Check if user has access to delete this invoice
-        if ($user->role_id != 1 && $user->branch_id && $invoice->branch_id != $user->branch_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+
+        // Only admin can delete invoices
+        if ($user->role_id != 1) {
+            return response()->json(['message' => 'Unauthorized. Only admin can delete invoices.'], 403);
         }
-        
+
+        // Only pending invoices can be deleted
+        if (strtolower($invoice->status) === 'paid') {
+            return response()->json(['message' => 'Paid invoices cannot be deleted.'], 422);
+        }
+
         $invoice->delete();
 
         return response()->json([

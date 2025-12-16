@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, Printer, DollarSign, Eye } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Download, Printer, DollarSign, Eye, Trash2 } from 'lucide-react';
 import { PayInvoiceModal } from '@/components/PayInvoiceModal';
 import { InvoiceDetailsOffcanvas } from '@/components/InvoiceDetailsOffcanvas';
 import toast from 'react-hot-toast';
@@ -37,6 +39,7 @@ interface Invoice {
 }
 
 export default function Invoices() {
+  const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -44,14 +47,14 @@ export default function Invoices() {
   const [totalItems, setTotalItems] = useState(0);
   const [entriesPerPage, setEntriesPerPage] = useState(50);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Filter states
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [customers, setCustomers] = useState<any[]>([]);
-  
+
   // Payment modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -59,6 +62,10 @@ export default function Invoices() {
   // Invoice details offcanvas states
   const [showDetailsOffcanvas, setShowDetailsOffcanvas] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
+
+  // Delete states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteInvoice, setPendingDeleteInvoice] = useState<Invoice | null>(null);
 
   useEffect(() => {
     fetchInvoices();
@@ -132,6 +139,26 @@ export default function Invoices() {
   const handleViewDetails = (invoiceId: number) => {
     setSelectedInvoiceId(invoiceId);
     setShowDetailsOffcanvas(true);
+  };
+
+  const handleDeleteClick = (invoice: Invoice) => {
+    setPendingDeleteInvoice(invoice);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDeleteInvoice) return;
+
+    try {
+      await axios.delete(`/invoices/${pendingDeleteInvoice.id}`);
+      toast.success('Invoice deleted successfully');
+      setDeleteConfirmOpen(false);
+      setPendingDeleteInvoice(null);
+      fetchInvoices();
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Failed to delete invoice';
+      toast.error(message);
+    }
   };
 
   const handleDownloadInvoice = async (invoiceId: number) => {
@@ -415,13 +442,21 @@ export default function Invoices() {
                           </Button>
                         </div>
                       ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => handlePayClick(invoice)}
-                          className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-600 px-3 py-1 text-xs font-medium rounded"
-                        >
-                          Pay →
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            onClick={() => handlePayClick(invoice)}
+                            className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-600 px-3 py-1 text-xs font-medium rounded"
+                          >
+                            Pay →
+                          </Button>
+                          {user?.role_id === 1 && (
+                            <Trash2
+                              className="h-4 w-4 text-red-500 cursor-pointer hover:text-red-700"
+                              onClick={() => handleDeleteClick(invoice)}
+                            />
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -536,13 +571,21 @@ export default function Invoices() {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => handlePayClick(invoice)}
-                        className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-600 px-3 py-1 text-xs font-medium rounded"
-                      >
-                        Pay →
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          onClick={() => handlePayClick(invoice)}
+                          className="bg-white hover:bg-gray-50 text-blue-600 border border-blue-600 px-3 py-1 text-xs font-medium rounded"
+                        >
+                          Pay →
+                        </Button>
+                        {user?.role_id === 1 && (
+                          <Trash2
+                            className="h-4 w-4 text-red-500 cursor-pointer hover:text-red-700"
+                            onClick={() => handleDeleteClick(invoice)}
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -624,6 +667,32 @@ export default function Invoices() {
       }}
       invoiceId={selectedInvoiceId}
     />
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete invoice <strong>{pendingDeleteInvoice?.invoice_id}</strong>? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => {
+            setDeleteConfirmOpen(false);
+            setPendingDeleteInvoice(null);
+          }}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleConfirmDelete}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </DashboardLayout>
   );
 }

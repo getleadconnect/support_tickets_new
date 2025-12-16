@@ -1440,8 +1440,19 @@ class TicketController extends Controller
 
         // Get product details
         $product = Product::find($request->product_id);
+
+        // Check if enough stock is available
+        if ($product->stock < $request->quantity) {
+            return response()->json([
+                'message' => 'Insufficient stock. Available: ' . $product->stock . ', Requested: ' . $request->quantity
+            ], 422);
+        }
+
         $unitPrice = $product->cost ?? 0;
         $totalPrice = $unitPrice * $request->quantity;
+
+        // Reduce stock from products table
+        $product->reduceStock($request->quantity);
 
         // Save to product_tickets table
         $sparePartId = DB::table('product_tickets')->insertGetId([
@@ -1502,6 +1513,12 @@ class TicketController extends Controller
 
         if (!$sparePart) {
             return response()->json(['message' => 'Spare part not found'], 404);
+        }
+
+        // Restore stock to products table
+        $product = Product::find($sparePart->product_id);
+        if ($product) {
+            $product->increaseStock($sparePart->quantity);
         }
 
         // Delete from database
@@ -1838,7 +1855,7 @@ private function getMonthlyTicketData()
 
         // Find ticket by tracking number (including soft deleted)
         $ticket = Ticket::withTrashed()
-            ->with('ticketStatus:id,status,color_code')
+            ->with(['ticketStatus:id,status,color_code', 'agent:id,name'])
             ->where('tracking_number', $validated['tracking_number'])
             ->first();
 
@@ -1862,6 +1879,29 @@ private function getMonthlyTicketData()
             ->filter()
             ->values();
 
+        // Get log notes from ticket_log_notes table
+        $logNotes = TicketLogNote::where('ticket_id', $ticket->id)
+            ->with('agent:id,name')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($note) {
+                return [
+                    'id' => $note->id,
+                    'description' => $note->description,
+                    'time' => $note->time,
+                    'created_at' => $note->created_at,
+                    'agent_name' => $note->agent ? $note->agent->name : null
+                ];
+            });
+
+        // Get assigned agents
+        $agents = $ticket->agent->map(function ($agent) {
+            return [
+                'id' => $agent->id,
+                'name' => $agent->name
+            ];
+        });
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -1874,7 +1914,9 @@ private function getMonthlyTicketData()
                     'color' => $ticket->ticketStatus->color_code
                 ] : null,
                 'histories' => $histories,
-                'spare_parts' => $spareParts
+                'spare_parts' => $spareParts,
+                'log_notes' => $logNotes,
+                'agents' => $agents
             ]
         ], 200);
     }

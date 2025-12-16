@@ -19,7 +19,6 @@ interface Payment {
   discount: number;
   net_amount: number;
   payment_mode: string;
-  created_by: number;
   created_at: string;
   updated_at: string;
   invoice?: {
@@ -36,10 +35,10 @@ interface Payment {
     name: string;
     email: string;
   };
-  createdBy?: {
+  created_by?: {
     id: number;
     name: string;
-  };
+  } | number;
 }
 
 export default function Payments() {
@@ -375,7 +374,7 @@ export default function Payments() {
                           year: 'numeric'
                         }).replace(/\//g, '-')}
                       </td>
-                      <td className="p-2 text-sm">{payment.createdBy?.name || 'Super Admin'}</td>
+                      <td className="p-2 text-sm">{typeof payment.created_by === 'object' && payment.created_by?.name ? payment.created_by.name : 'Super Admin'}</td>
                     </tr>
                   ))
                 )}
@@ -444,7 +443,7 @@ export default function Payments() {
                         month: '2-digit',
                         year: 'numeric'
                       }).replace(/\//g, '-')}</span>
-                      <span>By: {payment.createdBy?.name || 'Super Admin'}</span>
+                      <span>By: {typeof payment.created_by === 'object' && payment.created_by?.name ? payment.created_by.name : 'Super Admin'}</span>
                     </div>
                   </div>
                 ))}

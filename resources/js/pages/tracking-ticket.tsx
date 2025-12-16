@@ -20,6 +20,19 @@ interface Status {
   color: string;
 }
 
+interface LogNote {
+  id: number;
+  description: string;
+  time: string;
+  created_at: string;
+  agent_name: string | null;
+}
+
+interface Agent {
+  id: number;
+  name: string;
+}
+
 interface TrackingData {
   tracking_number: string;
   issue: string;
@@ -27,6 +40,8 @@ interface TrackingData {
   status: Status | null;
   histories: History[];
   spare_parts: string[];
+  log_notes: LogNote[];
+  agents: Agent[];
 }
 
 export default function TrackingTicket() {
@@ -152,6 +167,52 @@ export default function TrackingTicket() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Technician */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-800 mb-3">Technician</h2>
+              {trackingData.agents && trackingData.agents.length > 0 ? (
+                <div className="space-y-2">
+                  {trackingData.agents.map((agent) => (
+                    <div key={agent.id} className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-semibold text-sm">
+                          {agent.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="text-slate-700">{agent.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-sm">No technician assigned</p>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+              <h2 className="text-lg font-semibold text-slate-800 mb-3">Notes</h2>
+              {trackingData.log_notes && trackingData.log_notes.length > 0 ? (
+                <div className="space-y-4">
+                  {trackingData.log_notes.map((note) => (
+                    <div key={note.id} className="border-l-4 border-blue-500 pl-4 py-2">
+                      <p className="text-slate-700">{note.description}</p>
+                      <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+                        {note.agent_name && (
+                          <span>By: {note.agent_name}</span>
+                        )}
+                        {note.time && (
+                          <span>Duration: {note.time}</span>
+                        )}
+                        <span>{format(new Date(note.created_at), 'MMM dd, yyyy hh:mm a')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-slate-500 text-sm">No notes available</p>
+              )}
             </div>
 
             {/* Histories */}
