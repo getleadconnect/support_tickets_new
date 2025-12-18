@@ -23,15 +23,20 @@ class BranchDashboardController extends Controller
         // Get total tickets for this branch
         $totalTickets = Ticket::where('branch_id', $branchId)->count();
         
-        // Get overdue tickets (assuming tickets have a due_date field)
+        // Get overdue tickets (status != 3 which is closed, with due date passed)
         $overdueTickets = Ticket::where('branch_id', $branchId)
-            ->where('status', '!=', 'closed')
-            ->where('due_date', '<', now())
+            ->where('status', '!=', 3)
+            ->where('due_date', '<', now()->format('Y-m-d'))
             ->count();
         
-        // Get open tickets
+        // Get open tickets (status != 3 which is closed)
         $openTickets = Ticket::where('branch_id', $branchId)
-            ->whereIn('status', ['open', 'pending', 'in_progress'])
+            ->where('status', '!=', 3)
+            ->count();
+        
+        // Get closed tickets (status = 3)
+        $closedTickets = Ticket::where('branch_id', $branchId)
+            ->where('status', 3)
             ->count();
         
         // Get monthly data for the last 12 months
@@ -41,6 +46,7 @@ class BranchDashboardController extends Controller
             'totalTickets' => $totalTickets,
             'overdueTickets' => $overdueTickets,
             'openTickets' => $openTickets,
+            'closedTickets' => $closedTickets,
             'monthlyData' => $monthlyData
         ]);
     }

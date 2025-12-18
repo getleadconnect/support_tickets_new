@@ -186,27 +186,8 @@ export function Dashboard() {
     }
   };
 
-  // Update monthly data when year changes
-  useEffect(() => {
-    if (allTicketsData.length > 0) {
-      const monthlyData = Array(12).fill(0);
-      
-      allTicketsData.forEach((ticket: any) => {
-        const ticketDate = new Date(ticket.created_at);
-        if (ticketDate.getFullYear() === selectedYear) {
-          const month = ticketDate.getMonth();
-          monthlyData[month]++;
-        }
-      });
-
-      const monthlyChartData = MONTHS.map((month, index) => ({
-        month,
-        tickets: monthlyData[index]
-      }));
-
-      setMonthlyTicketsData(monthlyChartData);
-    }
-  }, [selectedYear, allTicketsData]);
+  // Monthly chart data is now handled by the backend in getDashboardStats
+  // The backend provides chartData with proper role-based filtering
 
   const getTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
@@ -227,16 +208,51 @@ export function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      // Fetch all tickets to get status distribution
-      const ticketsResponse = await axios.get('/tickets', {
-        params: {
-          per_page: 1000,
-          branch_id: selectedBranch !== 'all' ? selectedBranch : null
-        }
+      // Fetch dashboard stats from the proper endpoint
+      const statsResponse = await axios.get('/dashboard-stats');
+      const stats = statsResponse.data.stats || {};
+      
+      // Set the main stats from the backend
+      setTotalTickets(stats.totalTickets || 0);
+      setTotalOpenTickets(stats.ticketsOpen || 0);
+      setDueTicketsCount(stats.ticketsOverdue || 0);
+      setTotalCustomers(stats.totalCustomers || 0);
+      
+      // Use backend chart data for monthly tickets
+      if (stats.chartData && Array.isArray(stats.chartData)) {
+        const formattedChartData = stats.chartData.map((item: any) => ({
+          month: item.month,
+          tickets: item.tickets,
+          trend: item.trend
+        }));
+        setMonthlyTicketsData(formattedChartData);
+      }
+      
+      // Use backend status distribution data for pie chart
+      if (stats.statusDistribution && Array.isArray(stats.statusDistribution)) {
+        setTicketStatusData(stats.statusDistribution);
+      }
+      
+      // Get tickets for status distribution, recent tickets, and other chart data
+      // For admin users, we need all tickets including closed ones for accurate charts
+      let ticketsEndpoint = '/tickets';
+      let ticketsParams: any = {
+        per_page: 1000,
+        branch_id: selectedBranch !== 'all' ? selectedBranch : null
+      };
+      
+      // For admin users, get all tickets including closed ones
+      const userResponse = await axios.get('/user');
+      if (userResponse.data?.role_id === 1) {
+        // Admin users - fetch all tickets including closed
+        ticketsParams.include_closed = true;
+      }
+      
+      const ticketsResponse = await axios.get(ticketsEndpoint, {
+        params: ticketsParams
       });
       
       const tickets = ticketsResponse.data.data || [];
-      setTotalTickets(ticketsResponse.data.total || 0);
       setAllTicketsData(tickets); // Store all tickets for year filtering
       
       // Extract unique years from tickets
@@ -253,42 +269,9 @@ export function Dashboard() {
       const sortedYears = Array.from(years).sort((a, b) => b - a);
       setAvailableYears(sortedYears);
 
-      // Count tickets by status and due tickets
-      const statusCounts = {
-        'Open': 0,
-        'In Progress': 0,
-        'Closed': 0,
-      };
-
-      let dueCount = 0;
-      let openTickets = 0;
-      const currentDate = new Date();
-      currentDate.setHours(0, 0, 0, 0);
-
-      tickets.forEach((ticket: any) => {
-        // Count by status
-        if (ticket.status === 1 || ticket.ticket_status?.name?.toLowerCase() === 'open') {
-          statusCounts['Open']++;
-          openTickets++;
-        } else if (ticket.status === 2 || ticket.ticket_status?.name?.toLowerCase().includes('progress')) {
-          statusCounts['In Progress']++;
-        } else if (ticket.status === 3 || ticket.ticket_status?.name?.toLowerCase() === 'closed') {
-          statusCounts['Closed']++;
-        }
-
-        // Count due tickets
-        const ticketDate = new Date(ticket.created_at);
-        if (ticketDate < currentDate && ticket.status !== 3) {
-          dueCount++;
-        }
-      });
-
-      setDueTicketsCount(dueCount);
-      setTotalOpenTickets(openTickets);
-
-      // Calculate performance metrics
-      const closedTickets = statusCounts['Closed'];
-      const totalTicketCount = statusCounts['Open'] + statusCounts['In Progress'] + statusCounts['Closed'];
+      // Calculate performance metrics using backend data
+      const closedTickets = stats.ticketsClosed || 0;
+      const totalTicketCount = stats.totalTickets || 0;
       
       // Resolution Rate: (Closed Tickets / Total Tickets) * 100
       const resRate = totalTicketCount > 0 ? Math.round((closedTickets / totalTicketCount) * 100) : 0;
@@ -311,34 +294,6 @@ export function Dashboard() {
       const avgDays = closedCount > 0 ? (totalDays / closedCount).toFixed(1) : '0';
       setAvgResolutionDays(parseFloat(avgDays));
 
-      // Format data for pie chart
-      const chartData = Object.entries(statusCounts).map(([name, value]) => ({
-        name,
-        value,
-        color: STATUS_COLORS[name as keyof typeof STATUS_COLORS]
-      }));
-
-      setTicketStatusData(chartData);
-
-      // Process monthly tickets for selected year
-      const monthlyData = Array(12).fill(0);
-      
-      tickets.forEach((ticket: any) => {
-        const ticketDate = new Date(ticket.created_at);
-        if (ticketDate.getFullYear() === selectedYear) {
-          const month = ticketDate.getMonth();
-          monthlyData[month]++;
-        }
-      });
-
-      // Format monthly data for bar chart
-      const monthlyChartData = MONTHS.map((month, index) => ({
-        month,
-        tickets: monthlyData[index]
-      }));
-
-      setMonthlyTicketsData(monthlyChartData);
-
       // Get recent tickets
       const sortedTickets = [...tickets].sort((a: any, b: any) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -346,14 +301,7 @@ export function Dashboard() {
       const recentFiveTickets = sortedTickets.slice(0, 5);
       setRecentTicketsData(recentFiveTickets);
 
-      // Fetch customers count
-      const customersResponse = await axios.get('/customers', {
-        params: {
-          branch_id: selectedBranch !== 'all' ? selectedBranch : null
-        }
-      });
-      const customersData = customersResponse.data.data || customersResponse.data || [];
-      setTotalCustomers(Array.isArray(customersData) ? customersData.length : 0);
+      // Customer count is already set from dashboard stats above
 
       // Fetch products count
       const productsResponse = await axios.get('/products');

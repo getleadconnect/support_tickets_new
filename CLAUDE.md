@@ -126,63 +126,52 @@ Route::get('/tickets', function() {
   - `WhatsappApiService.php`: Trait for sending WhatsApp notifications (used in TicketController and TaskController)
   - `SimpleXLSXParser.php`: Service for parsing Excel files during customer import
 
-## Development Commands
+## Common Development Commands
 
 ### Build and Development
 
 ```bash
-# Install PHP dependencies
-composer install
-
-# Install Node.js dependencies
-npm install
-
-# Build frontend assets (production)
-npm run build
-
-# Run Vite development server (frontend only)
-npm run dev
-
-# Start full development environment (requires Composer dev dependencies)
+# Start full development environment (recommended)
 composer run dev
-# This runs: php artisan serve, php artisan queue:listen, php artisan pail, and npm run dev concurrently
+
+# Individual commands:
+npm run build                    # Build frontend for production
+npm run dev                      # Start Vite dev server only
+php artisan serve                # Start Laravel dev server
+php artisan queue:listen --tries=1  # Process background jobs
+php artisan pail --timeout=0     # View live logs
+
+# Testing
+composer run test               # Run test suite with config clear
+php artisan test                # Run tests without config clear
+php artisan test --filter=TicketController  # Run specific test class
+
+# Database
+php artisan migrate             # Run migrations
+php artisan migrate:fresh       # Fresh migration (deletes all data!)
+php artisan migrate:rollback    # Rollback last migration batch
+
+# Cache management
+php artisan config:clear        # Clear config cache (IMPORTANT after .env changes)
+php artisan cache:clear         # Clear application cache
+php artisan view:clear          # Clear compiled views
+php artisan optimize:clear      # Clear all caches
+
+# Scheduled commands
+php artisan telegram:daily-summary  # Manually send daily Telegram summary
 ```
 
-### Laravel Artisan Commands
-
-```bash
-# Start development server
-php artisan serve
-# Or for LAMPP environment:
-/opt/lampp/bin/php artisan serve
-
-# Run queue worker for background jobs
-php artisan queue:listen --tries=1
-
-# View application logs in real-time
-php artisan pail --timeout=0
-
-# Clear configuration cache after .env changes
-php artisan config:clear
-
-# Run migrations
-php artisan migrate
-
-# Run tests
-composer run test
-# Equivalent to: php artisan config:clear && php artisan test
-```
-
-### Database Access
-
-The project uses XAMPP/LAMPP's MySQL server:
+### LAMPP/XAMPP Specific Commands
 
 ```bash
 # Access MySQL via LAMPP
 /opt/lampp/bin/mysql -u root -p
 
-# Check MySQL status
+# Check LAMPP services status
 sudo /opt/lampp/lampp status
+
+# Use LAMPP PHP instead of system PHP
+/opt/lampp/bin/php artisan serve
 ```
 
 ## Environment Configuration
@@ -1340,3 +1329,236 @@ $select.select2({
 - The `dropdownParent` setting ensures dropdown renders inside modal container
 - Both `templateResult` and `templateSelection` now use identical formatting
 - Select2 instance properly cleaned up on modal close to prevent memory leaks
+
+### Payments Created By Column Fix (Added: 2025-12-16)
+
+**Feature**: Fixed payments list page to show correct creator names instead of always showing "Super Admin"
+
+**Problem Identified**:
+- Payments list page was displaying "Super Admin" for all payments regardless of who created them
+- The `createdBy` relationship was correctly eager-loaded in the backend
+- Laravel serializes relationship names to snake_case (`created_by`) in JSON responses
+- Frontend was looking for camelCase (`createdBy`) which didn't exist
+
+**Root Cause**:
+Laravel's JSON serialization converts relationship names from camelCase to snake_case:
+- Model relationship: `createdBy()`
+- JSON output: `created_by`
+
+**Solution Applied**:
+
+**Backend** (`app/Http/Controllers/PaymentController.php`):
+- No changes needed - relationship was already correctly eager-loaded
+- Used `clone` to separate sum calculation from main query to avoid interference
+
+```php
+// Calculate total using clone (doesn't affect eager loading)
+$totalNetAmount = (clone $baseQuery)->sum('net_amount');
+
+// Main query with eager loading
+$query = $baseQuery->with(['invoice', 'ticket', 'customer', 'createdBy'])
+                   ->orderBy('id', 'desc');
+```
+
+**Frontend** (`resources/js/pages/payments.tsx`):
+
+**Updated Interface**:
+```typescript
+interface Payment {
+  // ... other fields
+  created_by?: {
+    id: number;
+    name: string;
+  } | number;  // Can be object (eager loaded) or number (just ID)
+}
+```
+
+**Desktop Table View**:
+```tsx
+<td className="p-2 text-sm">
+  {typeof payment.created_by === 'object' && payment.created_by?.name
+    ? payment.created_by.name
+    : 'Super Admin'}
+</td>
+```
+
+**Mobile Card View**:
+```tsx
+<span>By: {typeof payment.created_by === 'object' && payment.created_by?.name
+  ? payment.created_by.name
+  : 'Super Admin'}</span>
+```
+
+**Key Pattern - Laravel Relationship Serialization**:
+```
+Model Method Name    →    JSON Key
+----------------------------------------
+createdBy()          →    created_by
+ticketStatus()       →    ticket_status
+customerDetails()    →    customer_details
+```
+
+**Files Modified**:
+1. `resources/js/pages/payments.tsx` - Updated interface and both table/card views
+
+**Benefits**:
+- ✅ Correct creator names now displayed
+- ✅ Works for both desktop table and mobile card views
+- ✅ Graceful fallback to "Super Admin" if relationship not loaded
+
+### Daily Telegram Notification (Added: 2025-12-16)
+
+**Feature**: Automated daily ticket summary sent to Telegram at 8:00 PM
+
+**Files Created**:
+
+1. **`app/Console/Commands/SendDailyTicketSummary.php`**
+   - Artisan command: `php artisan telegram:daily-summary`
+   - Dispatches the summary job to the queue
+   - Validates Telegram credentials before dispatching
+
+2. **`app/Jobs/SendDailyTelegramSummaryJob.php`**
+   - Queued job that fetches ticket statistics and sends to Telegram
+   - Includes `getTicketStatistics()` method for data collection
+   - Includes `formatDailySummaryMessage()` for message formatting
+
+3. **Updated `routes/console.php`**
+   - Added schedule configuration for daily 8:00 PM execution
+   - Uses Asia/Kolkata timezone
+
+**Schedule Configuration**:
+```php
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('telegram:daily-summary')
+    ->dailyAt('20:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->appendOutputTo(storage_path('logs/telegram-daily-summary.log'));
+```
+
+**Statistics Included**:
+| Statistic | Description | Query |
+|-----------|-------------|-------|
+| Total Tickets | All tickets (excluding soft deleted) | `Ticket::count()` |
+| Solved Tickets | Tickets with status = 3 | `Ticket::where('status', 3)->count()` |
+| Created Today | Tickets created today | `whereDate('created_at', $today)` |
+| Solved Today | Tickets closed today | `where('status', 3)->whereDate('closed_at', $today)` |
+| Open Tickets | Tickets with status != 3 | `where('status', '!=', 3)->count()` |
+| Top 5 Overdue | Oldest overdue tickets | `where('due_date', '<', $today)->limit(5)` |
+
+**Message Format**:
+```
+📊 DAILY TICKET SUMMARY
+━━━━━━━━━━━━━━━━━━━━━
+📅 Date: 16-12-2024
+⏰ Time: 08:00 PM
+
+📈 TICKET STATISTICS
+━━━━━━━━━━━━━━━━━━━━━
+
+📋 Total Tickets: 150
+✅ Solved Tickets: 120
+🆕 Created Today: 5
+🏁 Solved Today: 8
+📂 Open Tickets: 30
+
+⚠️ TOP 5 OVERDUE TICKETS
+━━━━━━━━━━━━━━━━━━━━━
+
+1. TKT0000123
+   📝 Screen replacement needed
+   👤 John Doe
+   📆 Due: 10-12-2024 (6 days overdue)
+   ⚡ Priority: High
+
+2. TKT0000456
+   📝 Battery issue
+   👤 Jane Smith
+   📆 Due: 12-12-2024 (4 days overdue)
+   ⚡ Priority: Medium
+
+━━━━━━━━━━━━━━━━━━━━━
+🤖 Automated Daily Report
+```
+
+**Server Cron Setup Required**:
+```bash
+* * * * * cd /opt/lampp/htdocs/AI/support_tickets_new && php artisan schedule:run >> /dev/null 2>&1
+```
+
+**Manual Testing**:
+```bash
+# Run the command manually
+php artisan telegram:daily-summary
+
+# Process the queued job
+php artisan queue:work --once
+```
+
+**Environment Variables Required**:
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+```
+
+**Dependencies**:
+- Uses existing `config/services.php` Telegram configuration
+- Requires queue worker running for job processing
+- Uses Carbon for date calculations
+
+**Files Modified**:
+1. `app/Console/Commands/SendDailyTicketSummary.php` (new)
+2. `app/Jobs/SendDailyTelegramSummaryJob.php` (new)
+3. `routes/console.php` (updated with schedule)
+
+**Benefits**:
+- ✅ Automated daily summary at 8:00 PM
+- ✅ Quick overview of ticket status
+- ✅ Highlights overdue tickets requiring attention
+- ✅ Includes ticket issue details for context
+- ✅ Queued job doesn't block other processes
+- ✅ Logs output for debugging
+
+## Debugging Tips
+
+### Laravel Debugging
+
+```bash
+# View real-time application logs
+php artisan pail --timeout=0
+
+# Debug configuration values
+php artisan tinker
+> config('app.url')
+> auth()->user()
+
+# Debug routes
+php artisan route:list --path=api/tickets
+
+# Debug queue jobs
+php artisan queue:listen --tries=1 --timeout=0
+```
+
+### React Debugging
+
+```javascript
+// Add to any component for debugging
+console.log('Component props:', props);
+console.log('API response:', response.data);
+
+// Check axios base URL
+console.log('API base URL:', axios.defaults.baseURL);
+
+// Debug role-based visibility
+console.log('User role:', user?.role_id);
+```
+
+### Common Issues and Solutions
+
+1. **"Method not allowed" error**: Check HTTP verb in route matches your request
+2. **"Unauthenticated" error**: Ensure token is included in Authorization header
+3. **Empty data in frontend**: Check Laravel relationship serialization (camelCase vs snake_case)
+4. **Select2 not initializing**: Add timeout for modal rendering (300ms typically works)
+5. **Soft-deleted tickets showing as null**: Add `->withTrashed()` to relationship

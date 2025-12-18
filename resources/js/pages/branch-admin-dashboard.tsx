@@ -32,6 +32,7 @@ interface DashboardStats {
   totalTickets: number;
   overdueTickets: number;
   openTickets: number;
+  closedTickets: number;
   monthlyData: Array<{
     month: string;
     tickets: number;
@@ -46,6 +47,7 @@ export default function BranchAdminDashboard() {
     totalTickets: 0,
     overdueTickets: 0,
     openTickets: 0,
+    closedTickets: 0,
     monthlyData: []
   });
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -151,7 +153,7 @@ export default function BranchAdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-blue-100">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-blue-700">
@@ -210,6 +212,27 @@ export default function BranchAdminDashboard() {
               </div>
               <div className="p-3 bg-green-200 rounded-full">
                 <CheckCircle className="h-6 w-6 text-green-700" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-purple-700">
+              Closed Tickets
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-3xl font-bold text-purple-900">
+                  {loading ? '...' : stats.closedTickets}
+                </p>
+                <p className="text-xs text-purple-600 mt-1">Completed tickets</p>
+              </div>
+              <div className="p-3 bg-purple-200 rounded-full">
+                <CheckCircle className="h-6 w-6 text-purple-700" />
               </div>
             </div>
           </CardContent>

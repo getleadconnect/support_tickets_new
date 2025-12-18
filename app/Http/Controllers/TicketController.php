@@ -35,8 +35,12 @@ class TicketController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $query = Ticket::with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'branch', 'activity.user', 'activity.status', 'activity.priority'])
-        ->where('status','!=',3);
+        $query = Ticket::with(['customer', 'user', 'ticketStatus', 'ticketPriority', 'agent', 'notifyTo', 'ticketLabel', 'branch', 'activity.user', 'activity.status', 'activity.priority']);
+        
+        // Only exclude closed tickets if include_closed parameter is not set
+        if (!$request->has('include_closed') || !$request->include_closed) {
+            $query->where('status','!=',3);
+        }
         
         // Filter tickets based on user role
         if ($user->role_id == 2) {
@@ -1749,55 +1753,136 @@ public function getTicketLabels()
 
 public function getDashboardStats(Request $request)
 {
-
     $user = auth()->user();
     
-    $data=['totalTickets' => 0,'ticketsOpen' => 0,'ticketsOverdue'=> 0,'ticketProgress'=>0,'totalCustomers' => 0];
+    $data = [
+        'totalTickets' => 0,
+        'ticketsOpen' => 0,
+        'ticketsOverdue' => 0,
+        'ticketsProgress' => 0,
+        'ticketsClosed' => 0,
+        'totalCustomers' => 0,
+        'statusDistribution' => []
+    ];
 
-    if($user->role_id==1)
-    {
+    if ($user->role_id == 1) {
+        // Admin (role_id = 1) - See all data without branch filtering
         $data['totalTickets'] = Ticket::count();
-
-        $data['ticketsOpen'] = Ticket::where('status',1)->count(); //open tickets
-        $data['ticketsOverdue'] = $overdueTickets = Ticket::where('status', '!=', 3)
-                        ->where('due_date', '<', now())
-                        ->count(); //due tickets
-        $data['ticketsProgress'] = Ticket::where('status',2)->count();
-        $data['totalCustomers'] = Customer::count(); //due tickets
-        $data['chartData'] = $this->getMonthlyTicketData(); 
+        $data['ticketsOpen'] = Ticket::where('status', 1)->count();
+        
+        // Overdue tickets: not closed (status 3) with due date passed
+        $data['ticketsOverdue'] = Ticket::where('status', '!=', 3)
+                        ->where('due_date', '<', now()->format('Y-m-d'))
+                        ->count();
+        
+        $data['ticketsProgress'] = Ticket::where('status', 2)->count();
+        $data['ticketsClosed'] = Ticket::where('status', 3)->count();
+        $data['totalCustomers'] = Customer::count();
+        $data['chartData'] = $this->getMonthlyTicketData($user);
+        
+        // Status distribution for pie chart
+        $data['statusDistribution'] = [
+            ['name' => 'Open', 'value' => $data['ticketsOpen'], 'color' => '#10b981'],
+            ['name' => 'In Progress', 'value' => $data['ticketsProgress'], 'color' => '#f59e0b'],
+            ['name' => 'Closed', 'value' => $data['ticketsClosed'], 'color' => '#6366f1']
+        ]; 
     }
-    elseif ($user->role_id==3)  //agent data counts
-    {
-        $tickets = Ticket::leftJoin('agent_ticket','tickets.id','agent_ticket.ticket_id')
-                   ->leftJoin('assign_agents','agent_ticket.agent_id','assign_agents.agent_id')
-                   ->where('assign_agents.user_id',$user->id)->get();
+    elseif ($user->role_id == 2) {
+        // Agent (role_id = 2) - See only assigned tickets
+        $assignedTicketIds = \DB::table('agent_ticket')
+            ->where('agent_id', $user->id)
+            ->pluck('ticket_id')
+            ->toArray();
 
-        $tot_open=$tot_progress=$tot_due=0;
-
-        foreach($tickets as $tkt)
-        {
-            if($tkt->status==1)
-                $tot_open++;
-            elseif($tkt->status!=3)
-                $tot_progress++;
-            if(($tkt->status!=3) and ($tkt->due_date<date('Y-m-d')))
-                $tot_due++;
+        if (!empty($assignedTicketIds)) {
+            $data['totalTickets'] = Ticket::whereIn('id', $assignedTicketIds)->count();
+            $data['ticketsOpen'] = Ticket::whereIn('id', $assignedTicketIds)->where('status', 1)->count();
+            $data['ticketsOverdue'] = Ticket::whereIn('id', $assignedTicketIds)
+                            ->where('status', '!=', 3)
+                            ->where('due_date', '<', now()->format('Y-m-d'))
+                            ->count();
+            $data['ticketsProgress'] = Ticket::whereIn('id', $assignedTicketIds)->where('status', 2)->count();
+            $data['ticketsClosed'] = Ticket::whereIn('id', $assignedTicketIds)->where('status', 3)->count();
         }
+        
+        // Customers count based on agent's branch (if any)
+        if ($user->branch_id) {
+            $data['totalCustomers'] = Customer::where('branch_id', $user->branch_id)->count();
+        } else {
+            $data['totalCustomers'] = Customer::count();
+        }
+        $data['chartData'] = $this->getMonthlyTicketData($user);
+        
+        // Status distribution for pie chart
+        $data['statusDistribution'] = [
+            ['name' => 'Open', 'value' => $data['ticketsOpen'], 'color' => '#10b981'],
+            ['name' => 'In Progress', 'value' => $data['ticketsProgress'], 'color' => '#f59e0b'],
+            ['name' => 'Closed', 'value' => $data['ticketsClosed'], 'color' => '#6366f1']
+        ]; 
+    }
+    elseif ($user->role_id == 3) {
+        // Manager (role_id = 3) - See tickets assigned to their managed agents
+        $assignedAgentIds = \DB::table('assign_agents')
+            ->where('user_id', $user->id)
+            ->pluck('agent_id')
+            ->toArray();
 
-        $data['totalTickets']=$tickets->count();
-        $data['ticketsOpen'] = $tot_open;
-        $data['ticketsOverdue'] = $tot_due;
-        $data['ticketsProgress'] = $tot_progress;
-        $data['totalCustomers'] = Customer::count(); //due tickets
-        $data['chartData'] = $this->getMonthlyTicketData(); 
+        if (!empty($assignedAgentIds)) {
+            $assignedTicketIds = \DB::table('agent_ticket')
+                ->whereIn('agent_id', $assignedAgentIds)
+                ->pluck('ticket_id')
+                ->toArray();
+
+            if (!empty($assignedTicketIds)) {
+                $data['totalTickets'] = Ticket::whereIn('id', $assignedTicketIds)->count();
+                $data['ticketsOpen'] = Ticket::whereIn('id', $assignedTicketIds)->where('status', 1)->count();
+                $data['ticketsOverdue'] = Ticket::whereIn('id', $assignedTicketIds)
+                                ->where('status', '!=', 3)
+                                ->where('due_date', '<', now()->format('Y-m-d'))
+                                ->count();
+                $data['ticketsProgress'] = Ticket::whereIn('id', $assignedTicketIds)->where('status', 2)->count();
+                $data['ticketsClosed'] = Ticket::whereIn('id', $assignedTicketIds)->where('status', 3)->count();
+            }
+        }
+        
+        $data['totalCustomers'] = Customer::count();
+        $data['chartData'] = $this->getMonthlyTicketData($user);
+        
+        // Status distribution for pie chart
+        $data['statusDistribution'] = [
+            ['name' => 'Open', 'value' => $data['ticketsOpen'], 'color' => '#10b981'],
+            ['name' => 'In Progress', 'value' => $data['ticketsProgress'], 'color' => '#f59e0b'],
+            ['name' => 'Closed', 'value' => $data['ticketsClosed'], 'color' => '#6366f1']
+        ]; 
+    }
+    elseif ($user->role_id == 4) {
+        // Branch Admin (role_id = 4) - See tickets from their branch
+        if ($user->branch_id) {
+            $data['totalTickets'] = Ticket::where('branch_id', $user->branch_id)->count();
+            $data['ticketsOpen'] = Ticket::where('branch_id', $user->branch_id)->where('status', 1)->count();
+            $data['ticketsOverdue'] = Ticket::where('branch_id', $user->branch_id)
+                            ->where('status', '!=', 3)
+                            ->where('due_date', '<', now()->format('Y-m-d'))
+                            ->count();
+            $data['ticketsProgress'] = Ticket::where('branch_id', $user->branch_id)->where('status', 2)->count();
+            $data['ticketsClosed'] = Ticket::where('branch_id', $user->branch_id)->where('status', 3)->count();
+            $data['totalCustomers'] = Customer::where('branch_id', $user->branch_id)->count();
+        }
+        $data['chartData'] = $this->getMonthlyTicketData($user);
+        
+        // Status distribution for pie chart
+        $data['statusDistribution'] = [
+            ['name' => 'Open', 'value' => $data['ticketsOpen'], 'color' => '#10b981'],
+            ['name' => 'In Progress', 'value' => $data['ticketsProgress'], 'color' => '#f59e0b'],
+            ['name' => 'Closed', 'value' => $data['ticketsClosed'], 'color' => '#6366f1']
+        ]; 
     }
 
-    return response()->json(['stats' => $data ], 200);
-
+    return response()->json(['stats' => $data], 200);
 }
 
 
-private function getMonthlyTicketData()
+private function getMonthlyTicketData($user = null)
     {
         $data = [];
         $currentDate = \Carbon\Carbon::now();
@@ -1806,13 +1891,61 @@ private function getMonthlyTicketData()
             $date = $currentDate->copy()->subMonths($i);
             $monthName = $date->format('M');
             
-            // Get ticket count for this month
-            $ticketCount = Ticket::whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->count();
+            // Get ticket count for this month based on user role
+            $query = Ticket::whereYear('created_at', $date->year)
+                ->whereMonth('created_at', $date->month);
+            
+            if ($user) {
+                if ($user->role_id == 1) {
+                    // Admin - no filtering, count all tickets
+                    // Query already set correctly above
+                } elseif ($user->role_id == 2) {
+                    // Agent - only assigned tickets
+                    $assignedTicketIds = \DB::table('agent_ticket')
+                        ->where('agent_id', $user->id)
+                        ->pluck('ticket_id')
+                        ->toArray();
+                    
+                    if (!empty($assignedTicketIds)) {
+                        $query->whereIn('id', $assignedTicketIds);
+                    } else {
+                        $query->whereRaw('1 = 0'); // No assigned tickets
+                    }
+                } elseif ($user->role_id == 3) {
+                    // Manager - tickets assigned to their managed agents
+                    $assignedAgentIds = \DB::table('assign_agents')
+                        ->where('user_id', $user->id)
+                        ->pluck('agent_id')
+                        ->toArray();
+
+                    if (!empty($assignedAgentIds)) {
+                        $assignedTicketIds = \DB::table('agent_ticket')
+                            ->whereIn('agent_id', $assignedAgentIds)
+                            ->pluck('ticket_id')
+                            ->toArray();
+
+                        if (!empty($assignedTicketIds)) {
+                            $query->whereIn('id', $assignedTicketIds);
+                        } else {
+                            $query->whereRaw('1 = 0'); // No assigned tickets
+                        }
+                    } else {
+                        $query->whereRaw('1 = 0'); // No assigned agents
+                    }
+                } elseif ($user->role_id == 4) {
+                    // Branch Admin - tickets from their branch
+                    if ($user->branch_id) {
+                        $query->where('branch_id', $user->branch_id);
+                    } else {
+                        $query->whereRaw('1 = 0'); // No branch assigned
+                    }
+                }
+            }
+            
+            $ticketCount = $query->count();
             
             // Calculate trend (simple moving average)
-            $trend = $this->calculateTrend($date);
+            $trend = $this->calculateTrend($date, $user);
             
             $data[] = [
                 'month' => $monthName,
@@ -1824,7 +1957,7 @@ private function getMonthlyTicketData()
         return $data;
     }
     
-    private function calculateTrend($date)
+    private function calculateTrend($date, $user = null)
     {
         // Simple 3-month moving average for trend
         $sum = 0;
@@ -1832,9 +1965,58 @@ private function getMonthlyTicketData()
         
         for ($i = 0; $i < 3; $i++) {
             $monthDate = $date->copy()->subMonths($i);
-            $tickets = Ticket::whereYear('created_at', $monthDate->year)
-                ->whereMonth('created_at', $monthDate->month)
-                ->count();
+            $query = Ticket::whereYear('created_at', $monthDate->year)
+                ->whereMonth('created_at', $monthDate->month);
+                
+            // Apply same role-based filtering as getMonthlyTicketData
+            if ($user) {
+                if ($user->role_id == 1) {
+                    // Admin - no filtering, count all tickets
+                    // Query already set correctly above
+                } elseif ($user->role_id == 2) {
+                    // Agent - only assigned tickets
+                    $assignedTicketIds = \DB::table('agent_ticket')
+                        ->where('agent_id', $user->id)
+                        ->pluck('ticket_id')
+                        ->toArray();
+                    
+                    if (!empty($assignedTicketIds)) {
+                        $query->whereIn('id', $assignedTicketIds);
+                    } else {
+                        $query->whereRaw('1 = 0'); // No assigned tickets
+                    }
+                } elseif ($user->role_id == 3) {
+                    // Manager - tickets assigned to their managed agents
+                    $assignedAgentIds = \DB::table('assign_agents')
+                        ->where('user_id', $user->id)
+                        ->pluck('agent_id')
+                        ->toArray();
+
+                    if (!empty($assignedAgentIds)) {
+                        $assignedTicketIds = \DB::table('agent_ticket')
+                            ->whereIn('agent_id', $assignedAgentIds)
+                            ->pluck('ticket_id')
+                            ->toArray();
+
+                        if (!empty($assignedTicketIds)) {
+                            $query->whereIn('id', $assignedTicketIds);
+                        } else {
+                            $query->whereRaw('1 = 0'); // No assigned tickets
+                        }
+                    } else {
+                        $query->whereRaw('1 = 0'); // No assigned agents
+                    }
+                } elseif ($user->role_id == 4) {
+                    // Branch Admin - tickets from their branch
+                    if ($user->branch_id) {
+                        $query->where('branch_id', $user->branch_id);
+                    } else {
+                        $query->whereRaw('1 = 0'); // No branch assigned
+                    }
+                }
+            }
+            
+            $tickets = $query->count();
             $sum += $tickets;
             $count++;
         }
